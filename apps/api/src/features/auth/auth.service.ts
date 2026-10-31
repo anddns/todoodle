@@ -1,12 +1,9 @@
-import type {
-	AuthSession,
-	LoginInput,
-	RegisterInput,
-	User,
-} from "@todoodle/shared";
+import type { LoginInput, RegisterInput, User } from "@todoodle/shared";
 import { authRepository, type UserRow } from "./auth.repository";
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+export type Session = { token: string; expiresAt: Date; user: User };
 
 // Checked when the email is unknown, so a failed login takes the same time
 // whether or not the account exists
@@ -24,7 +21,7 @@ function hashToken(token: string): string {
 	return new Bun.CryptoHasher("sha256").update(token).digest("hex");
 }
 
-function startSession(user: UserRow): AuthSession {
+function startSession(user: UserRow): Session {
 	const token = Buffer.from(
 		crypto.getRandomValues(new Uint8Array(32)),
 	).toString("base64url");
@@ -35,14 +32,14 @@ function startSession(user: UserRow): AuthSession {
 	});
 	return {
 		token,
-		expiresAt: session.expiresAt.toISOString(),
+		expiresAt: session.expiresAt,
 		user: toUser(user),
 	};
 }
 
 export const authService = {
 	/** Returns null when the email is already registered. */
-	async register(input: RegisterInput): Promise<AuthSession | null> {
+	async register(input: RegisterInput): Promise<Session | null> {
 		if (authRepository.findUserByEmail(input.email)) return null;
 		const user = authRepository.createUser({
 			email: input.email,
@@ -52,7 +49,7 @@ export const authService = {
 	},
 
 	/** Returns null when the email or password is wrong. */
-	async login(input: LoginInput): Promise<AuthSession | null> {
+	async login(input: LoginInput): Promise<Session | null> {
 		const user = authRepository.findUserByEmail(input.email);
 		const valid = await Bun.password.verify(
 			input.password,

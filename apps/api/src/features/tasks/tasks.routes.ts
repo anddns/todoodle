@@ -9,7 +9,7 @@ import {
 import { Elysia } from "elysia";
 import { z } from "zod";
 import { errorBody } from "../../shared/errors";
-import { authGuard, bearerAuth, unauthorizedResponse } from "../auth";
+import { authGuard, sessionAuth, unauthorizedResponse } from "../auth";
 import { tasksService } from "./tasks.service";
 
 const taskNotFound = errorBody("NOT_FOUND", "Task not found");
@@ -19,7 +19,7 @@ const taskNotFoundResponse = apiErrorSchema.describe("Task not found");
 
 export const tasksRoutes = new Elysia({
 	prefix: "/tasks",
-	detail: { tags: ["Tasks"], security: bearerAuth },
+	detail: { tags: ["Tasks"], security: sessionAuth },
 })
 	.use(authGuard)
 	.post(

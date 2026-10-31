@@ -21,7 +21,11 @@ export const apiDocs = openapi({
 		],
 		components: {
 			securitySchemes: {
-				bearerAuth: { type: "http", scheme: "bearer" },
+				sessionCookie: {
+					type: "apiKey",
+					in: "cookie",
+					name: "todoodle_session",
+				},
 			},
 		},
 	},

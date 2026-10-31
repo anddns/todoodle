@@ -1,6 +1,5 @@
 import {
 	apiErrorSchema,
-	authSessionSchema,
 	loginSchema,
 	registerSchema,
 	userSchema,
@@ -8,7 +7,12 @@ import {
 import { Elysia } from "elysia";
 import { z } from "zod";
 import { errorBody } from "../../shared/errors";
-import { authGuard, bearerAuth, unauthorizedResponse } from "./auth.guard";
+import {
+	clearSessionCookie,
+	SESSION_COOKIE,
+	setSessionCookie,
+} from "./auth.cookie";
+import { authGuard, sessionAuth, unauthorizedResponse } from "./auth.guard";
 import { authService } from "./auth.service";
 import { loginAttempts } from "./login-attempts";
 
@@ -31,26 +35,28 @@ export const authRoutes = new Elysia({
 	.use(authGuard)
 	.post(
 		"/register",
-		async ({ body, status }) => {
+		async ({ body, cookie, status }) => {
 			const session = await authService.register(body);
-			return session ? status(201, session) : status(409, emailTaken);
+			if (!session) return status(409, emailTaken);
+			setSessionCookie(cookie, session);
+			return status(201, session.user);
 		},
 		{
 			body: registerSchema,
 			response: {
-				201: authSessionSchema.describe("User registered and signed in"),
+				201: userSchema.describe("User registered and signed in"),
 				409: apiErrorSchema.describe("Email already registered"),
 				422: invalidRequestResponse,
 			},
 			detail: {
 				summary: "Register a user",
-				description: "Creates the user and returns a session token.",
+				description: `Creates the user and starts a session in the \`${SESSION_COOKIE}\` cookie.`,
 			},
 		},
 	)
 	.post(
 		"/login",
-		async ({ body, request, server, set, status }) => {
+		async ({ body, cookie, request, server, set, status }) => {
 			const ip = server?.requestIP(request)?.address ?? "unknown";
 			const attemptsKey = `${ip}:${body.email}`;
 
@@ -66,27 +72,28 @@ export const authRoutes = new Elysia({
 				return status(401, invalidCredentials);
 			}
 			loginAttempts.reset(attemptsKey);
-			return session;
+			setSessionCookie(cookie, session);
+			return session.user;
 		},
 		{
 			body: loginSchema,
 			response: {
-				200: authSessionSchema.describe("Signed in"),
+				200: userSchema.describe("Signed in"),
 				401: apiErrorSchema.describe("Invalid email or password"),
 				422: invalidRequestResponse,
 				429: apiErrorSchema.describe("Too many failed login attempts"),
 			},
 			detail: {
 				summary: "Sign in",
-				description:
-					"Returns a session token to send as `Authorization: Bearer <token>`. After 5 failed attempts for the same email and IP, login is blocked for up to 15 minutes.",
+				description: `Starts a session in the \`${SESSION_COOKIE}\` cookie. After 5 failed attempts for the same email and IP, login is blocked for up to 15 minutes.`,
 			},
 		},
 	)
 	.post(
 		"/logout",
-		({ token, status }) => {
+		({ token, cookie, status }) => {
 			authService.logout(token);
+			clearSessionCookie(cookie);
 			return status(204, undefined);
 		},
 		{
@@ -97,15 +104,16 @@ export const authRoutes = new Elysia({
 			},
 			detail: {
 				summary: "Sign out",
-				description: "Revokes the session token used in the request.",
-				security: bearerAuth,
+				description: "Revokes the current session and clears its cookie.",
+				security: sessionAuth,
 			},
 		},
 	)
 	.post(
 		"/logout-all",
-		({ user, status }) => {
+		({ user, cookie, status }) => {
 			authService.logoutAll(user.id);
+			clearSessionCookie(cookie);
 			return status(204, undefined);
 		},
 		{
@@ -117,8 +125,8 @@ export const authRoutes = new Elysia({
 			detail: {
 				summary: "Sign out everywhere",
 				description:
-					"Revokes all session tokens of the user, including the one used in the request.",
-				security: bearerAuth,
+					"Revokes all sessions of the user, including the current one.",
+				security: sessionAuth,
 			},
 		},
 	)
@@ -128,5 +136,5 @@ export const authRoutes = new Elysia({
 			200: userSchema.describe("Signed-in user"),
 			401: unauthorizedResponse,
 		},
-		detail: { summary: "Get the signed-in user", security: bearerAuth },
+		detail: { summary: "Get the signed-in user", security: sessionAuth },
 	});

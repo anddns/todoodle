@@ -20,13 +20,6 @@ export const loginSchema = z.object({
 	password: z.string().min(1).max(128),
 });
 
-export const authSessionSchema = z.object({
-	token: z.string(),
-	expiresAt: z.iso.datetime(),
-	user: userSchema,
-});
-
 export type User = z.infer<typeof userSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
-export type AuthSession = z.infer<typeof authSessionSchema>;
