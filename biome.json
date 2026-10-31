@@ -7,7 +7,7 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!!**/drizzle"]
+		"includes": ["**", "!!**/drizzle", "!!**/routeTree.gen.ts"]
 	},
 	"formatter": {
 		"enabled": true,
@@ -36,5 +36,13 @@
 				"organizeImports": "on"
 			}
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": ["apps/web/src/components/ui/**"],
+			"linter": {
+				"enabled": false
+			}
+		}
+	]
 }
