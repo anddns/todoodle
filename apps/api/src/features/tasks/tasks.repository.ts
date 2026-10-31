@@ -23,4 +23,8 @@ export const tasksRepository = {
 	findById(id: string): TaskRow | undefined {
 		return db.select().from(tasks).where(eq(tasks.id, id)).get();
 	},
+
+	update(id: string, data: Partial<NewTaskRow>): TaskRow | undefined {
+		return db.update(tasks).set(data).where(eq(tasks.id, id)).returning().get();
+	},
 };

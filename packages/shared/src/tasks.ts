@@ -21,7 +21,11 @@ export const createTaskSchema = z.object({
 	dueDate: z.iso.date().nullable().optional(),
 });
 
-export const updateTaskSchema = createTaskSchema.partial();
+export const updateTaskSchema = createTaskSchema
+	.partial()
+	.refine((input) => Object.keys(input).length > 0, {
+		message: "At least one field must be provided",
+	});
 
 export const taskIdParamsSchema = z.object({
 	id: z.uuid({ version: "v7" }),
