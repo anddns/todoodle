@@ -20,6 +20,11 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 | 14  | [Versionamento da API pelo prefixo `/v1`](#14-versionamento-da-api-pelo-prefixo-v1)                      | API         |
 | 15  | [Autenticação com sessões próprias](#15-autenticação-com-sessões-próprias)                               | Segurança   |
 | 16  | [Tarefas por usuário](#16-tarefas-por-usuário)                                                           | Modelo      |
+| 17  | [React com Vite, sem renderização no servidor](#17-react-com-vite-sem-renderização-no-servidor)          | Frontend    |
+| 18  | [Frontend e API no mesmo endereço](#18-frontend-e-api-no-mesmo-endereço)                                 | Frontend    |
+| 19  | [Cliente tipado com Eden](#19-cliente-tipado-com-eden)                                                   | Frontend    |
+| 20  | [TanStack Router e TanStack Query](#20-tanstack-router-e-tanstack-query)                                 | Frontend    |
+| 21  | [Formulários e componentes](#21-formulários-e-componentes)                                               | Frontend    |
 
 ## 1. Bun como runtime e gerenciador de pacotes
 
@@ -33,7 +38,7 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 **Decisão:** organizar o projeto como um monorepo com `apps/*` e `packages/*`, usando os workspaces do Bun, sem Turborepo ou Nx.
 
-**Motivo:** o projeto tem só dois pacotes (`@todoodle/api` e `@todoodle/shared`). Os workspaces do Bun bastam para ligar os pacotes e rodar scripts em todos eles com `bun --filter`. Um futuro `apps/web` entra sem mudar a estrutura.
+**Motivo:** o projeto tem só três pacotes (`@todoodle/api`, `@todoodle/web` e `@todoodle/shared`). Os workspaces do Bun bastam para ligar os pacotes e rodar scripts em todos eles com `bun --filter`. O `apps/web` entrou depois da API sem mudar a estrutura.
 
 **Alternativas:** Turborepo ou Nx, que trazem cache e orquestração de tarefas, mas não se pagam com poucos pacotes.
 
@@ -41,7 +46,7 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 **Decisão:** usar o Elysia na API.
 
-**Motivo:** o Elysia foi feito para o Bun e aproveita os recursos do runtime sem camadas de adaptação. Com ele, um único schema na definição da rota cuida de três coisas ao mesmo tempo: valida a requisição, define os tipos do handler e gera a documentação OpenAPI. Ele aceita schemas Zod diretamente (via Standard Schema), então os mesmos schemas podem ser usados fora das rotas, e tem um plugin oficial de OpenAPI. O app também exporta o próprio tipo, o que permite usar o Eden como cliente tipado no futuro frontend, sem gerar código.
+**Motivo:** o Elysia foi feito para o Bun e aproveita os recursos do runtime sem camadas de adaptação. Com ele, um único schema na definição da rota cuida de três coisas ao mesmo tempo: valida a requisição, define os tipos do handler e gera a documentação OpenAPI. Ele aceita schemas Zod diretamente (via Standard Schema), então os mesmos schemas podem ser usados fora das rotas, e tem um plugin oficial de OpenAPI. O app também exporta o próprio tipo, o que permite ao frontend usar o Eden como cliente tipado, sem gerar código (veja a [decisão 19](#19-cliente-tipado-com-eden)).
 
 **Alternativas:**
 
@@ -86,7 +91,7 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 **Decisão:** escrever os schemas de validação com Zod no pacote `@todoodle/shared` e usá-los diretamente nas rotas do Elysia.
 
-**Motivo:** a API e o futuro frontend vão usar a mesma validação e os mesmos tipos para parte dos dados. Os tipos (`Task`, `CreateTaskInput` etc.) são inferidos dos schemas, então não existe uma segunda definição para manter em sincronia.
+**Motivo:** a API e o frontend usam a mesma validação e os mesmos tipos para parte dos dados. Os tipos (`Task`, `CreateTaskInput` etc.) são inferidos dos schemas, então não existe uma segunda definição para manter em sincronia.
 
 **Alternativas:** o TypeBox (`t`), validador nativo do Elysia, que não seria reaproveitado com a mesma facilidade no frontend.
 
@@ -140,9 +145,9 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 ## 13. Idiomas do projeto
 
-**Decisão:** a documentação em Markdown (como este arquivo, o README e o escopo) e as mensagens de commit são escritas em português do Brasil. Todo o resto, inclusive o código, os comentários, as mensagens de log e de erro e os textos da documentação OpenAPI, é escrito em inglês americano.
+**Decisão:** a documentação em Markdown (como este arquivo, o README e o escopo), os textos da interface web e as mensagens de commit são escritos em português do Brasil. Todo o resto, inclusive o código, os comentários, as mensagens de log e de erro e os textos da documentação OpenAPI, é escrito em inglês americano.
 
-**Motivo:** o código segue a convenção da maioria dos projetos e bibliotecas. Assim, os nomes do projeto não se misturam com os das APIs que ele usa (evitando coisas como `getUsuarios`), e as mensagens de erro e de log podem ser pesquisadas diretamente. Os textos do OpenAPI ficam em inglês porque são escritos no código, ao lado dos schemas. Já a documentação e os commits registram decisões e a história do projeto, e por isso ficam no idioma em que o autor pensa e escreve com mais precisão.
+**Motivo:** o código segue a convenção da maioria dos projetos e bibliotecas. Assim, os nomes do projeto não se misturam com os das APIs que ele usa (evitando coisas como `getUsuarios`), e as mensagens de erro e de log podem ser pesquisadas diretamente. Os textos do OpenAPI ficam em inglês porque são escritos no código, ao lado dos schemas. Já a documentação e os commits registram decisões e a história do projeto, e por isso ficam no idioma em que o autor pensa e escreve com mais precisão. A interface web fala com quem usa o app, então fica em português, inclusive as mensagens de erro mostradas na tela, que o frontend escolhe a partir do `code` da resposta da API.
 
 **Alternativas:**
 
@@ -194,3 +199,79 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 **Motivo:** filtrar no repositório garante que nenhuma rota esqueça a verificação. O `404` não revela se a tarefa existe, e para o usuário ela de fato não existe. A exclusão em cascata apaga as tarefas e as sessões junto com o usuário.
 
 **Detalhe:** a migration `0002_add_user_to_tasks` recria a tabela `tasks` e descarta as tarefas existentes, porque elas não tinham dono e a coluna `user_id` é obrigatória. O SQL foi escrito à mão, já que o gerado pelo `drizzle-kit` não funcionava no SQLite (coluna `NOT NULL` sem valor padrão) e omitia o `ON DELETE CASCADE`.
+
+## 17. React com Vite, sem renderização no servidor
+
+**Decisão:** o frontend (`apps/web`) é uma SPA em React, compilada com o Vite.
+
+**Motivo:** o app é um cliente para uma API que já existe, e todo o conteúdo fica atrás do login. Não há páginas públicas que precisem de SEO ou de renderização no servidor. Uma SPA vira só arquivos estáticos, que a própria API pode servir (veja a [decisão 18](#18-frontend-e-api-no-mesmo-endereço)). O Vite é a escolha padrão para React sem framework, e o shadcn/ui e o TanStack Router têm suporte oficial a ele.
+
+**Alternativas:**
+
+- **Next.js** ou **TanStack Start**: renderizam páginas no servidor, o que traria um segundo servidor para operar sem benefício para um app atrás de login.
+- **O bundler do próprio Bun**: tiraria uma ferramenta do projeto, mas o template do shadcn/ui e o plugin de rotas do TanStack Router são feitos para o Vite.
+
+## 18. Frontend e API no mesmo endereço
+
+**Decisão:** o navegador acessa o frontend e a API pelo mesmo endereço. Em desenvolvimento, o Vite (`localhost:5173`) repassa as requisições para `/v1` à API (`localhost:3000`). Em produção, a API vai servir o build do frontend, e tudo roda em um único processo Bun. Essa parte fica para o marco de deploy.
+
+**Motivo:** a sessão fica em um cookie (veja a [decisão 15](#15-autenticação-com-sessões-próprias)). No mesmo endereço, o navegador envia o cookie sozinho, o `SameSite=Lax` funciona sem exceções e não é preciso configurar CORS. Por isso o frontend não tem variáveis de ambiente: ele chama a API em `window.location.origin`. Também é a forma mais simples de publicar um projeto de portfólio, com um só deploy.
+
+**Alternativas:**
+
+- **Subdomínios** (`app.todoodle.com` e `api.todoodle.com`): o cookie continua funcionando, mas exige CORS com credenciais e dois deploys. Ainda é possível migrar para esse modelo depois.
+- **Domínios diferentes** (como `todoodle.vercel.app` e `todoodle-api.fly.dev`): os navegadores bloqueiam cada vez mais os cookies entre sites, então não serve para uma sessão em cookie.
+
+## 19. Cliente tipado com Eden
+
+**Decisão:** o frontend chama a API com o Eden Treaty (`@elysiajs/eden`), tipado a partir do tipo `App` exportado pela API.
+
+**Motivo:** os tipos de rotas, corpos, query strings e respostas vêm direto da API, sem gerar código e sem uma segunda definição para manter. Uma mudança incompatível na API faz o `bun check` do frontend falhar. O `@todoodle/api` declara `exports` e é só uma dependência de desenvolvimento do frontend, que o importa com `import type`. Assim, nenhum código do servidor entra no bundle do navegador.
+
+**Detalhes:**
+
+- **`parseDate: false`:** por padrão, o Eden converte em `Date` toda string da resposta que parece uma data. Os schemas compartilhados tipam as datas como strings ISO 8601, então os valores em tempo de execução não batiam com os tipos, e o type check não tinha como perceber. O problema apareceu no primeiro teste da página de tarefas: toda tarefa com data de entrega quebrava com "Invalid time value". Com a conversão desligada (em `lib/api.ts`), os dados chegam exatamente como a API os envia. Quem trocar a configuração do cliente precisa manter essa opção.
+- **Erros:** a função `unwrap` transforma a resposta de erro do Eden em um `ApiError`, com uma mensagem em português escolhida pelo `code` (veja a [decisão 10](#10-formato-padronizado-de-erros)). Cada tela pode trocar a mensagem de um código. O login, por exemplo, mostra "E-mail ou senha inválidos." para `UNAUTHORIZED`.
+- **Datas de entrega:** o `dueDate` (`YYYY-MM-DD`) é lido como meia-noite no fuso do usuário. Um `new Date("2026-11-05")` seria meia-noite em UTC, que aparece como o dia anterior em fusos atrás do UTC, como o do Brasil.
+
+**Alternativas:**
+
+- **`fetch` com tipos escritos à mão:** os tipos poderiam se afastar da API sem ninguém perceber.
+- **Cliente gerado a partir do OpenAPI** (como o `openapi-typescript`): funciona com qualquer backend, mas acrescenta um passo de geração que o Eden dispensa.
+
+## 20. TanStack Router e TanStack Query
+
+**Decisão:** usar o TanStack Router, com rotas baseadas em arquivos, para a navegação, e o TanStack Query para os dados do servidor.
+
+**Motivo:** o Router tipa as rotas, os parâmetros e a query string, protege páginas com `beforeLoad` e carrega os dados antes de mostrar a página. O Query cuida do cache, dos estados de carregamento e erro e da atualização dos dados depois de uma alteração.
+
+**Como os dois se combinam:**
+
+- **Sessão:** o usuário da sessão (ou `null`), vindo de `GET /v1/auth/me`, fica no cache do Query. Os layouts `_authenticated` e `_guest` o leem no `beforeLoad` e redirecionam quando preciso. O logout limpa o cache inteiro, para que o próximo usuário nunca veja os dados do anterior.
+- **Sessão expirada:** um handler global de erros do Query trata qualquer `401` recebido dentro do app: ele marca o usuário como `null` e reavalia as rotas, que levam ao login com o parâmetro `redirect`. Esse parâmetro só aceita caminhos internos (`/...`, mas não `//...`), para que um link não mande o usuário para outro site depois do login.
+- **Carregamento:** os loaders das rotas chamam `ensureQueryData`, então a página já abre com os dados, sem um estado de carregamento. O `defaultPreloadStaleTime: 0` deixa o cache só a cargo do Query.
+- **Filtro na URL:** o status da lista de tarefas fica na query string, validado pelo schema compartilhado. Um valor inválido volta para "todas".
+- **Alterações:** depois de criar, editar ou excluir uma tarefa, todas as listas são recarregadas antes de o diálogo fechar, para a tela nunca mostrar dados antigos.
+- **Novas tentativas:** erros `4xx` não são repetidos, porque tentar de novo não os resolve.
+
+**Convenção:** o arquivo `routeTree.gen.ts`, gerado pelo plugin do Vite, fica no repositório. Assim o `bun check` funciona no CI sem rodar o Vite. O Biome ignora esse arquivo.
+
+**Alternativas:**
+
+- **React Router:** também atenderia, mas tipa os parâmetros e a query string de forma mais fraca.
+- **`useEffect` com `fetch`:** exigiria reimplementar cache, estados de carregamento e atualização depois das alterações.
+
+## 21. Formulários e componentes
+
+**Decisão:** os formulários usam o React Hook Form com os schemas Zod compartilhados (via `zodResolver`). Os componentes vêm do shadcn/ui sobre o Base UI, criados a partir de um preset próprio (`b27Gcx4k`: estilo `base-rhea`, cores neutras, fonte IBM Plex Sans, bordas pouco arredondadas, menus translúcidos e ícones Lucide).
+
+**Motivo:** o navegador valida os dados da mesma forma que a API e mostra o erro antes de enviar a requisição. O shadcn/ui copia o código dos componentes para o projeto (`components/ui/`), então eles podem ser alterados como qualquer outro arquivo, sem depender de uma biblioteca fechada.
+
+**Detalhes:**
+
+- **Mensagens em português:** o `main.tsx` configura o Zod com o locale `ptBR` e mensagens mais diretas para campos vazios, curtos ou longos. A configuração vale só no navegador, então os erros da API continuam em inglês.
+- **Campos vazios:** o formulário de tarefa converte uma descrição ou data vazia em `null`. Assim, apagar o campo na edição de fato remove o valor na API.
+- **Troca de preset:** o primeiro preset foi o `b396dpadc` (estilo `base-luma`, cor base `mauve` com destaque índigo e fonte Inter). Ele foi trocado pelo `b27Gcx4k` com o `bunx shadcn apply`, que reinstala os componentes com o novo estilo. Depois disso, foi preciso refazer as alterações manuais, remover o `next-themes` e a fonte antiga, que o comando acrescenta ou deixa para trás, e fixar de novo as versões exatas das dependências.
+- **Componentes gerados:** os arquivos de `components/ui/` ficam fora do lint do Biome, mas são formatados por ele. As alterações feitas neles à mão estão listadas no README, porque rodar o `shadcn add` de novo as desfaz.
+
+**Alternativas:** bibliotecas de componentes prontas, como MUI ou Mantine, que são mais difíceis de adaptar a um visual próprio e entram no projeto como uma dependência inteira.

@@ -2,19 +2,37 @@
 
 [![CI](https://github.com/anddns/todoodle/actions/workflows/ci.yml/badge.svg)](https://github.com/anddns/todoodle/actions/workflows/ci.yml)
 
-API REST de gerenciamento de tarefas, organizada como um monorepo com arquitetura baseada em features. É um projeto de portfólio: o escopo da v1 e o que fica de fora estão em [docs/scope.md](docs/scope.md), e o motivo de cada escolha técnica está em [docs/decisions.md](docs/decisions.md).
+Aplicação de gerenciamento de tarefas, com uma API REST e um frontend web em React, organizada como um monorepo com arquitetura baseada em features. É um projeto de portfólio: o escopo da v1 e o que fica de fora estão em [docs/scope.md](docs/scope.md), e o motivo de cada escolha técnica está em [docs/decisions.md](docs/decisions.md).
 
 ## Stack
 
+### Geral
+
+| Área              | Ferramenta                                                     |
+| ----------------- | -------------------------------------------------------------- |
+| Runtime e pacotes | [Bun](https://bun.com) (workspaces, `bun check`, `bun:sqlite`) |
+| Validação         | [Zod](https://zod.dev), compartilhado entre os pacotes         |
+| Lint e formatação | [Biome](https://biomejs.dev)                                   |
+| Linguagem         | TypeScript em modo estrito                                     |
+
+### API
+
 | Área                 | Ferramenta                                                        |
 | -------------------- | ----------------------------------------------------------------- |
-| Runtime e pacotes    | [Bun](https://bun.com) (workspaces, `bun check`, `bun:sqlite`)    |
 | Framework HTTP       | [Elysia](https://elysiajs.com)                                    |
 | Banco de dados e ORM | SQLite com [Drizzle ORM](https://orm.drizzle.team)                |
-| Validação            | [Zod](https://zod.dev), compartilhado entre os pacotes            |
 | Documentação da API  | OpenAPI com [Scalar](https://scalar.com), via `@elysiajs/openapi` |
-| Lint e formatação    | [Biome](https://biomejs.dev)                                      |
-| Linguagem            | TypeScript em modo estrito                                        |
+
+### Frontend
+
+| Área                  | Ferramenta                                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Interface e build     | [React](https://react.dev) com [Vite](https://vite.dev)                                                              |
+| Componentes e estilos | [shadcn/ui](https://ui.shadcn.com) sobre [Base UI](https://base-ui.com), com [Tailwind CSS](https://tailwindcss.com) |
+| Rotas                 | [TanStack Router](https://tanstack.com/router), com rotas baseadas em arquivos                                       |
+| Dados do servidor     | [TanStack Query](https://tanstack.com/query)                                                                         |
+| Cliente da API        | [Eden](https://elysiajs.com/eden/overview), com os tipos inferidos da própria API                                    |
+| Formulários           | [React Hook Form](https://react-hook-form.com), com os schemas Zod compartilhados                                    |
 
 ## Como rodar
 
@@ -26,7 +44,15 @@ bun run db:migrate
 bun run dev
 ```
 
-A API sobe em `http://localhost:3000` e a documentação interativa fica em `http://localhost:3000/openapi`.
+O `bun run dev` sobe a API e o frontend juntos, em modo watch:
+
+| Endereço                        | O que é                           |
+| ------------------------------- | --------------------------------- |
+| `http://localhost:5173`         | Frontend (abra este no navegador) |
+| `http://localhost:3000`         | API                               |
+| `http://localhost:3000/openapi` | Documentação interativa da API    |
+
+Em desenvolvimento, o Vite repassa as requisições para `/v1` à API. Assim, o navegador vê um único endereço, e o cookie da sessão funciona sem configurar CORS.
 
 ### Variáveis de ambiente
 
@@ -41,6 +67,24 @@ cp apps/api/.env.example apps/api/.env
 | `PORT`         | `3000`        | Porta do servidor                                                          |
 | `DB_FILE_NAME` | `todoodle.db` | Arquivo do banco SQLite                                                    |
 | `NODE_ENV`     | —             | Com `production`, o cookie de sessão recebe o atributo `Secure` (só HTTPS) |
+
+O frontend não tem variáveis de ambiente: ele chama a API no mesmo endereço da página.
+
+## Frontend
+
+A interface é em português do Brasil e tem três páginas:
+
+| Rota        | Página                                                               | Acesso          |
+| ----------- | -------------------------------------------------------------------- | --------------- |
+| `/login`    | Login                                                                | Só sem sessão   |
+| `/register` | Cadastro, que já entra na conta                                      | Só sem sessão   |
+| `/`         | Lista de tarefas, com filtro por status e criação, edição e exclusão | Exige sessão 🔒 |
+
+- **Rotas protegidas:** quem abre uma página protegida sem sessão vai para `/login?redirect=...` e volta para ela depois de entrar. Quem já tem sessão e abre o login ou o cadastro vai para `/`. Se a sessão expirar com o app aberto, o próximo `401` leva de volta ao login.
+- **Filtro na URL:** o status escolhido fica na URL (`/?status=pending`), então sobrevive a um recarregamento e funciona com o botão voltar. Um status inválido mostra todas as tarefas.
+- **Tarefas:** a caixa de seleção alterna entre `pending` e `finished`, e o diálogo de edição permite escolher qualquer status. Uma tarefa não finalizada com a data de entrega no passado aparece como atrasada.
+- **Validação:** os formulários usam os mesmos schemas Zod da API, com mensagens em português.
+- **Tema:** segue o tema claro ou escuro do sistema. A tecla <kbd>D</kbd> alterna entre os dois, e a escolha fica salva no navegador.
 
 ## Endpoints
 
@@ -124,18 +168,30 @@ Todos os erros seguem o mesmo formato:
 ```
 todoodle/
 ├── apps/
-│   └── api/                      # API HTTP (@todoodle/api)
-│       ├── drizzle/              # migrations geradas pelo drizzle-kit
+│   ├── api/                      # API HTTP (@todoodle/api)
+│   │   ├── drizzle/              # migrations geradas pelo drizzle-kit
+│   │   └── src/
+│   │       ├── features/
+│   │       │   ├── auth/         # usuários, sessões e o guard `auth`
+│   │       │   └── tasks/        # uma pasta por feature
+│   │       ├── shared/           # config, banco, erros, OpenAPI
+│   │       ├── app.ts            # monta o app e registra as features
+│   │       └── index.ts          # inicia o servidor
+│   └── web/                      # frontend React (@todoodle/web)
 │       └── src/
+│           ├── components/
+│           │   └── ui/           # componentes do shadcn/ui
 │           ├── features/
-│           │   ├── auth/         # usuários, sessões e o guard `auth`
-│           │   └── tasks/        # uma pasta por feature
-│           ├── shared/           # config, banco, erros, OpenAPI
-│           ├── app.ts            # monta o app e registra as features
-│           └── index.ts          # inicia o servidor
+│           │   ├── auth/         # formulários e queries da sessão
+│           │   └── tasks/        # lista, diálogos e queries das tarefas
+│           ├── lib/              # cliente Eden e tratamento de erros
+│           ├── routes/           # páginas (rotas baseadas em arquivos)
+│           ├── routeTree.gen.ts  # árvore de rotas gerada pelo plugin
+│           └── main.tsx          # monta o app, o router e o QueryClient
 ├── packages/
 │   └── shared/                   # schemas Zod e tipos (@todoodle/shared)
 ├── docs/
+│   ├── decisions.md
 │   └── scope.md
 ├── biome.json
 ├── package.json                  # workspaces e scripts
@@ -156,7 +212,14 @@ O código da API é agrupado por feature, e não por camada técnica. Cada featu
 
 Uma feature só expõe o que está no seu `index.ts`, e uma feature não importa arquivos internos de outra. A única exceção são os arquivos `*.table.ts`, que importam as tabelas de outras features diretamente para declarar chaves estrangeiras.
 
-Os schemas Zod ficam em `packages/shared`, para que a API e um futuro frontend usem a mesma validação e os mesmos tipos.
+Os schemas Zod ficam em `packages/shared`, para que a API e o frontend usem a mesma validação e os mesmos tipos.
+
+O frontend segue a mesma ideia. As páginas ficam em `routes/`, e cada feature em `features/` reúne os próprios componentes e as queries do TanStack Query, expostos pelo seu `index.ts`. As rotas com prefixo `_` são layouts sem segmento na URL: `_authenticated/` agrupa as páginas que exigem sessão, e `_guest/` as que só fazem sentido sem ela.
+
+Os arquivos em `components/ui/` são gerados pelo `bunx shadcn add` e ficam fora do lint do Biome. Dois deles foram alterados à mão, e rodar o `shadcn add` de novo desfaz essas mudanças:
+
+- `dialog.tsx`: o texto "Close", lido por leitores de tela, virou "Fechar".
+- `sonner.tsx`: lê o tema do `components/theme-provider.tsx` do projeto, em vez do pacote `next-themes`.
 
 ## Scripts
 
@@ -164,7 +227,8 @@ Rode a partir da raiz do projeto:
 
 | Script                | Descrição                                          |
 | --------------------- | -------------------------------------------------- |
-| `bun run dev`         | Inicia a API em modo watch                         |
+| `bun run dev`         | Inicia a API e o frontend em modo watch            |
+| `bun run build`       | Gera o build de produção do frontend               |
 | `bun run db:generate` | Gera uma migration a partir das tabelas do Drizzle |
 | `bun run db:migrate`  | Aplica as migrations pendentes                     |
 | `bun run lint`        | Verifica lint e formatação com o Biome             |

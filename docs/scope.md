@@ -1,6 +1,6 @@
 # Todoodle — Escopo
 
-Todoodle é uma API de gerenciamento de tarefas, construída como um monorepo Bun com arquitetura baseada em features. Este documento define o que a v1 faz e, tão importante quanto, o que ela não faz.
+Todoodle é uma aplicação de gerenciamento de tarefas, com uma API REST e um frontend web, construída como um monorepo Bun com arquitetura baseada em features. Este documento define o que a v1 faz e, tão importante quanto, o que ela não faz.
 
 ## MVP (v1)
 
@@ -21,6 +21,18 @@ Não há usuários na v1: todas as tarefas pertencem a um único dono implícito
 - Login, logout (da sessão atual ou de todas) e consulta do usuário da sessão
 - Bloqueio temporário do login após várias tentativas erradas
 - Rotas de tarefas protegidas: cada usuário só vê e altera as próprias tarefas
+
+## Frontend
+
+Um app web em `apps/web`, com a interface em português, que permite:
+
+- Cadastrar-se, entrar e sair
+- Listar as tarefas, com filtro por status guardado na URL
+- Criar, editar e excluir tarefas, com confirmação antes de excluir
+- Finalizar uma tarefa, ou voltá-la para pendente, com uma caixa de seleção
+- Ver quais tarefas estão atrasadas
+
+Fica de fora por enquanto: busca, ordenação escolhida pelo usuário, paginação e o encerramento de todas as sessões pela interface (`logout-all` existe só na API).
 
 ## Entidades
 
@@ -61,5 +73,5 @@ Candidatas para depois: `Project` (agrupar tarefas) e `Tag`.
 
 1. Autenticação e tarefas por usuário (concluído)
 2. CI com GitHub Actions (concluído)
-3. Frontend em `apps/web`
+3. Frontend em `apps/web` (concluído)
 4. Deploy
