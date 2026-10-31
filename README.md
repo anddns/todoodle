@@ -43,21 +43,23 @@ cp apps/api/.env.example apps/api/.env
 
 ## Endpoints
 
-| Método   | Rota         | Descrição                                        | Sucesso |
-| -------- | ------------ | ------------------------------------------------ | ------- |
-| `GET`    | `/health`    | Verifica se a API está no ar                     | `200`   |
-| `POST`   | `/tasks`     | Cria uma tarefa                                  | `201`   |
-| `GET`    | `/tasks`     | Lista as tarefas, com filtro opcional `?status=` | `200`   |
-| `GET`    | `/tasks/:id` | Busca uma tarefa                                 | `200`   |
-| `PATCH`  | `/tasks/:id` | Atualiza os campos enviados (pelo menos um)      | `200`   |
-| `DELETE` | `/tasks/:id` | Exclui uma tarefa                                | `204`   |
+As rotas de tarefas ficam sob o prefixo de versão `/v1`. As rotas `/health` e `/openapi` ficam na raiz, porque descrevem o serviço, e não o contrato da API.
 
-Uma tarefa tem `id` (UUID v7), `title`, `description`, `status` (`pending`, `in_progress` ou `finished`), `dueDate` (`YYYY-MM-DD`), `createdAt` e `updatedAt`. Para finalizar uma tarefa, envie `PATCH /tasks/:id` com `{ "status": "finished" }`.
+| Método   | Rota            | Descrição                                        | Sucesso |
+| -------- | --------------- | ------------------------------------------------ | ------- |
+| `GET`    | `/health`       | Verifica se a API está no ar                     | `200`   |
+| `POST`   | `/v1/tasks`     | Cria uma tarefa                                  | `201`   |
+| `GET`    | `/v1/tasks`     | Lista as tarefas, com filtro opcional `?status=` | `200`   |
+| `GET`    | `/v1/tasks/:id` | Busca uma tarefa                                 | `200`   |
+| `PATCH`  | `/v1/tasks/:id` | Atualiza os campos enviados (pelo menos um)      | `200`   |
+| `DELETE` | `/v1/tasks/:id` | Exclui uma tarefa                                | `204`   |
+
+Uma tarefa tem `id` (UUID v7), `title`, `description`, `status` (`pending`, `in_progress` ou `finished`), `dueDate` (`YYYY-MM-DD`), `createdAt` e `updatedAt`. Para finalizar uma tarefa, envie `PATCH /v1/tasks/:id` com `{ "status": "finished" }`.
 
 Exemplo:
 
 ```sh
-curl -X POST http://localhost:3000/tasks \
+curl -X POST http://localhost:3000/v1/tasks \
   -H "content-type: application/json" \
   -d '{ "title": "Escrever o README", "dueDate": "2026-11-05" }'
 ```

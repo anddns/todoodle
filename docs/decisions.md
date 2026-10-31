@@ -17,6 +17,7 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 | 11  | [Respostas declaradas e documentação OpenAPI](#11-respostas-declaradas-e-documentação-openapi)           | API         |
 | 12  | [Biome e `bun check` como ferramentas de qualidade](#12-biome-e-bun-check-como-ferramentas-de-qualidade) | Ferramentas |
 | 13  | [Idiomas do projeto](#13-idiomas-do-projeto)                                                             | Convenções  |
+| 14  | [Versionamento da API pelo prefixo `/v1`](#14-versionamento-da-api-pelo-prefixo-v1)                      | API         |
 
 ## 1. Bun como runtime e gerenciador de pacotes
 
@@ -141,3 +142,14 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 - **Tudo em inglês:** deixaria o projeto mais acessível a quem não fala português, mas tornaria mais lento escrever documentação que hoje tem um único autor e leitor principal.
 - **Tudo em português, inclusive o código:** os nomes ficariam misturados com os das bibliotecas e frameworks, e o código fugiria da convenção que qualquer desenvolvedor espera encontrar.
 - **Documentação bilíngue:** dobraria o trabalho de manutenção e as duas versões tenderiam a ficar dessincronizadas.
+
+## 14. Versionamento da API pelo prefixo `/v1`
+
+**Decisão:** as rotas de tarefas ficam sob o prefixo `/v1` (por exemplo, `/v1/tasks`). As rotas `/health` e `/openapi` ficam na raiz, porque descrevem o serviço, e não o contrato da API.
+
+**Motivo:** o prefixo na URL é a forma de versionamento mais simples e conhecida, e deixa explícito qual contrato o cliente usa. Ele foi adicionado antes do frontend e da autenticação, quando nenhum cliente dependia dos caminhos antigos e a mudança custava pouco. Um `/v2` só será criado se houver uma mudança incompatível no contrato.
+
+**Alternativas:**
+
+- **Sem versionamento:** suficiente enquanto o único cliente é o próprio frontend, publicado junto com a API no mesmo monorepo, mas tornaria uma futura mudança incompatível mais difícil.
+- **Versão em header ou query string** (como `Accept: application/vnd.todoodle.v1+json`): é mais flexível, mas também menos visível e mais difícil de testar e documentar, sem benefício para um projeto deste tamanho.

@@ -13,6 +13,6 @@ export const app = new Elysia()
 		},
 		detail: { tags: ["Health"], summary: "Check that the API is running" },
 	})
-	.use(tasksRoutes);
+	.group("/v1", (v1) => v1.use(tasksRoutes));
 
 export type App = typeof app;
