@@ -9,9 +9,9 @@ export const app = new Elysia()
 	.use(apiDocs)
 	.get("/health", () => ({ status: "ok" as const }), {
 		response: {
-			200: z.object({ status: z.literal("ok") }).describe("A API está no ar"),
+			200: z.object({ status: z.literal("ok") }).describe("The API is running"),
 		},
-		detail: { tags: ["Saúde"], summary: "Verificar se a API está no ar" },
+		detail: { tags: ["Health"], summary: "Check that the API is running" },
 	})
 	.use(tasksRoutes);
 
