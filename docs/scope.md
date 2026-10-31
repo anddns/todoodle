@@ -19,15 +19,15 @@ Não há usuários na v1: todas as tarefas pertencem a um único dono implícito
 
 ### Task
 
-| Campo         | Tipo                                             | Observações                          |
-| ------------- | ------------------------------------------------ | ------------------------------------ |
-| `id`          | string (UUID v7)                                 | Gerado pela API                      |
-| `title`       | string                                           | Obrigatório, 1–200 caracteres        |
-| `description` | string \| null                                   | Opcional                             |
-| `status`      | `"pending"` \| `"in_progress"` \| `"finished"`   | Padrão: `"pending"`                  |
-| `dueDate`     | data ISO 8601 \| null                            | Opcional                             |
-| `createdAt`   | data e hora ISO 8601                             | Definido pela API                    |
-| `updatedAt`   | data e hora ISO 8601                             | Atualizado pela API a cada alteração |
+| Campo         | Tipo                                           | Observações                          |
+| ------------- | ---------------------------------------------- | ------------------------------------ |
+| `id`          | string (UUID v7)                               | Gerado pela API                      |
+| `title`       | string                                         | Obrigatório, 1–200 caracteres        |
+| `description` | string \| null                                 | Opcional                             |
+| `status`      | `"pending"` \| `"in_progress"` \| `"finished"` | Padrão: `"pending"`                  |
+| `dueDate`     | data ISO 8601 \| null                          | Opcional                             |
+| `createdAt`   | data e hora ISO 8601                           | Definido pela API                    |
+| `updatedAt`   | data e hora ISO 8601                           | Atualizado pela API a cada alteração |
 
 Candidatas para depois: `Project` (agrupar tarefas) e `Tag`.
 
