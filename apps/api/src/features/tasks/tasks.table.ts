@@ -1,7 +1,6 @@
+import { TASK_STATUSES } from "@todoodle/shared";
 import { sql } from "drizzle-orm";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-
-export const TASK_STATUSES = ["pending", "in_progress", "finished"] as const;
 
 export const tasks = sqliteTable("tasks", {
 	id: text()
