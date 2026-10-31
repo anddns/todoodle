@@ -6,6 +6,7 @@ import {
 	Outlet,
 } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
+import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 	{
@@ -19,6 +20,7 @@ function RootLayout() {
 		<>
 			<HeadContent />
 			<Outlet />
+			<Toaster />
 		</>
 	);
 }
