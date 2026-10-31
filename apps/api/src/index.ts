@@ -1,8 +1,7 @@
 import { app } from "./app";
+import { config } from "./shared/config";
 
-const port = Number(Bun.env.PORT ?? 3000);
-
-app.listen(port);
+app.listen(config.port);
 
 console.log(
 	`API running at http://${app.server?.hostname}:${app.server?.port}`,

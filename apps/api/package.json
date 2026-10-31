@@ -5,9 +5,15 @@
 	"scripts": {
 		"dev": "bun --watch src/index.ts",
 		"start": "bun src/index.ts",
-		"typecheck": "bun check"
+		"typecheck": "bun check",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "bun src/shared/db/migrate.ts"
 	},
 	"dependencies": {
+		"drizzle-orm": "0.45.4",
 		"elysia": "1.4.30"
+	},
+	"devDependencies": {
+		"drizzle-kit": "0.31.11"
 	}
 }
