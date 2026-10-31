@@ -1,5 +1,7 @@
 # Todoodle
 
+[![CI](https://github.com/anddns/todoodle/actions/workflows/ci.yml/badge.svg)](https://github.com/anddns/todoodle/actions/workflows/ci.yml)
+
 API REST de gerenciamento de tarefas, organizada como um monorepo com arquitetura baseada em features. É um projeto de portfólio: o escopo da v1 e o que fica de fora estão em [docs/scope.md](docs/scope.md), e o motivo de cada escolha técnica está em [docs/decisions.md](docs/decisions.md).
 
 ## Stack
