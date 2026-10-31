@@ -8,6 +8,8 @@
 	],
 	"scripts": {
 		"dev": "bun --filter @todoodle/api dev",
+		"db:generate": "bun --filter @todoodle/api db:generate",
+		"db:migrate": "bun --filter @todoodle/api db:migrate",
 		"lint": "biome check .",
 		"lint:fix": "biome check --write .",
 		"typecheck": "bun --filter '*' typecheck"
