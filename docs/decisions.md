@@ -43,7 +43,7 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 **Alternativas:**
 
 - **Hono**, que foi a primeira sugestão do planejamento. É maduro, roda em vários runtimes (Bun, Node, Deno, Workers) e também tem um cliente tipado (`hc`). Ficou de fora porque a portabilidade entre runtimes não tem valor aqui, já que o projeto usa o Bun de propósito. Além disso, para ter validação, tipos e OpenAPI saindo do mesmo schema, seria preciso adotar o `@hono/zod-openapi`, que muda a forma de declarar as rotas (`createRoute` + `OpenAPIHono`) e acrescenta uma camada que o Elysia já entrega por padrão.
-- **Fastify** e **Express**: são focados no Node. O Express não infere tipos a partir dos schemas, e o Fastify exige *type providers* para chegar perto disso.
+- **Fastify** e **Express**: são focados no Node. O Express não infere tipos a partir dos schemas, e o Fastify exige _type providers_ para chegar perto disso.
 
 ## 4. Arquitetura baseada em features
 
