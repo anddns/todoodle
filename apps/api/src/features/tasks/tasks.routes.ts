@@ -27,4 +27,12 @@ export const tasksRoutes = new Elysia({ prefix: "/tasks" })
 			tasksService.update(params.id, body) ??
 			status(404, { message: "Task not found" }),
 		{ params: taskIdParamsSchema, body: updateTaskSchema },
+	)
+	.delete(
+		"/:id",
+		({ params, status }) =>
+			tasksService.delete(params.id)
+				? status(204)
+				: status(404, { message: "Task not found" }),
+		{ params: taskIdParamsSchema },
 	);

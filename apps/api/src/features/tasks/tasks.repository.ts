@@ -27,4 +27,13 @@ export const tasksRepository = {
 	update(id: string, data: Partial<NewTaskRow>): TaskRow | undefined {
 		return db.update(tasks).set(data).where(eq(tasks.id, id)).returning().get();
 	},
+
+	delete(id: string): boolean {
+		const deleted = db
+			.delete(tasks)
+			.where(eq(tasks.id, id))
+			.returning({ id: tasks.id })
+			.get();
+		return deleted !== undefined;
+	},
 };

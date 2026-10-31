@@ -32,4 +32,8 @@ export const tasksService = {
 		const row = tasksRepository.update(id, input);
 		return row ? toTask(row) : null;
 	},
+
+	delete(id: string): boolean {
+		return tasksRepository.delete(id);
+	},
 };
