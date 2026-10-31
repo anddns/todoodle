@@ -76,4 +76,8 @@ export const authService = {
 	logout(token: string): void {
 		authRepository.deleteSession(hashToken(token));
 	},
+
+	logoutAll(userId: string): void {
+		authRepository.deleteUserSessions(userId);
+	},
 };

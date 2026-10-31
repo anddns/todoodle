@@ -34,4 +34,8 @@ export const authRepository = {
 	deleteSession(id: string): void {
 		db.delete(sessions).where(eq(sessions.id, id)).run();
 	},
+
+	deleteUserSessions(userId: string): void {
+		db.delete(sessions).where(eq(sessions.userId, userId)).run();
+	},
 };
