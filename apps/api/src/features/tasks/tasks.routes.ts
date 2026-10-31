@@ -9,6 +9,7 @@ import {
 import { Elysia } from "elysia";
 import { z } from "zod";
 import { errorBody } from "../../shared/errors";
+import { authGuard, bearerAuth, unauthorizedResponse } from "../auth";
 import { tasksService } from "./tasks.service";
 
 const taskNotFound = errorBody("NOT_FOUND", "Task not found");
@@ -18,20 +19,29 @@ const taskNotFoundResponse = apiErrorSchema.describe("Task not found");
 
 export const tasksRoutes = new Elysia({
 	prefix: "/tasks",
-	detail: { tags: ["Tasks"] },
+	detail: { tags: ["Tasks"], security: bearerAuth },
 })
-	.post("", ({ body, status }) => status(201, tasksService.create(body)), {
-		body: createTaskSchema,
-		response: {
-			201: taskSchema.describe("Task created"),
-			422: invalidRequestResponse,
+	.use(authGuard)
+	.post(
+		"",
+		({ user, body, status }) => status(201, tasksService.create(user.id, body)),
+		{
+			auth: true,
+			body: createTaskSchema,
+			response: {
+				201: taskSchema.describe("Task created"),
+				401: unauthorizedResponse,
+				422: invalidRequestResponse,
+			},
+			detail: { summary: "Create a task" },
 		},
-		detail: { summary: "Create a task" },
-	})
-	.get("", ({ query }) => tasksService.list(query), {
+	)
+	.get("", ({ user, query }) => tasksService.list(user.id, query), {
+		auth: true,
 		query: listTasksQuerySchema,
 		response: {
 			200: z.array(taskSchema).describe("List of tasks"),
+			401: unauthorizedResponse,
 			422: invalidRequestResponse,
 		},
 		detail: {
@@ -42,13 +52,15 @@ export const tasksRoutes = new Elysia({
 	})
 	.get(
 		"/:id",
-		({ params, status }) =>
-			tasksService.getById(params.id) ?? status(404, taskNotFound),
+		({ user, params, status }) =>
+			tasksService.getById(user.id, params.id) ?? status(404, taskNotFound),
 		{
+			auth: true,
 			params: taskIdParamsSchema,
 			response: {
 				200: taskSchema.describe("Task found"),
 				404: taskNotFoundResponse,
+				401: unauthorizedResponse,
 				422: invalidRequestResponse,
 			},
 			detail: { summary: "Get a task" },
@@ -56,14 +68,17 @@ export const tasksRoutes = new Elysia({
 	)
 	.patch(
 		"/:id",
-		({ params, body, status }) =>
-			tasksService.update(params.id, body) ?? status(404, taskNotFound),
+		({ user, params, body, status }) =>
+			tasksService.update(user.id, params.id, body) ??
+			status(404, taskNotFound),
 		{
+			auth: true,
 			params: taskIdParamsSchema,
 			body: updateTaskSchema,
 			response: {
 				200: taskSchema.describe("Task updated"),
 				404: taskNotFoundResponse,
+				401: unauthorizedResponse,
 				422: invalidRequestResponse,
 			},
 			detail: {
@@ -75,15 +90,17 @@ export const tasksRoutes = new Elysia({
 	)
 	.delete(
 		"/:id",
-		({ params, status }) =>
-			tasksService.delete(params.id)
+		({ user, params, status }) =>
+			tasksService.delete(user.id, params.id)
 				? status(204, undefined)
 				: status(404, taskNotFound),
 		{
+			auth: true,
 			params: taskIdParamsSchema,
 			response: {
 				204: z.null().optional().describe("Task deleted"),
 				404: taskNotFoundResponse,
+				401: unauthorizedResponse,
 				422: invalidRequestResponse,
 			},
 			detail: {

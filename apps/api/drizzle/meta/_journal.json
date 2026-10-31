@@ -15,6 +15,13 @@
       "when": 1793481999307,
       "tag": "0001_create_users_and_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793483459101,
+      "tag": "0002_add_user_to_tasks",
+      "breakpoints": true
     }
   ]
 }
