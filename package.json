@@ -7,7 +7,8 @@
 		"packages/*"
 	],
 	"scripts": {
-		"dev": "bun --filter @todoodle/api dev",
+		"dev": "bun run --parallel --filter '@todoodle/api' --filter '@todoodle/web' dev",
+		"build": "bun --filter @todoodle/web build",
 		"db:generate": "bun --filter @todoodle/api db:generate",
 		"db:migrate": "bun --filter @todoodle/api db:migrate",
 		"lint": "biome check .",
