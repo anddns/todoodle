@@ -17,4 +17,9 @@ export const tasksService = {
 	list(query: ListTasksQuery): Task[] {
 		return tasksRepository.findAll(query).map(toTask);
 	},
+
+	getById(id: string): Task | null {
+		const row = tasksRepository.findById(id);
+		return row ? toTask(row) : null;
+	},
 };

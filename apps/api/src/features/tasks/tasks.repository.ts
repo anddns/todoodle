@@ -19,4 +19,8 @@ export const tasksRepository = {
 			.orderBy(desc(tasks.createdAt), desc(tasks.id))
 			.all();
 	},
+
+	findById(id: string): TaskRow | undefined {
+		return db.select().from(tasks).where(eq(tasks.id, id)).get();
+	},
 };

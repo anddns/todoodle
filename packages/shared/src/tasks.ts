@@ -23,6 +23,10 @@ export const createTaskSchema = z.object({
 
 export const updateTaskSchema = createTaskSchema.partial();
 
+export const taskIdParamsSchema = z.object({
+	id: z.uuid({ version: "v7" }),
+});
+
 export const listTasksQuerySchema = z.object({
 	status: taskStatusSchema.optional(),
 });
@@ -31,4 +35,5 @@ export type TaskStatus = z.infer<typeof taskStatusSchema>;
 export type Task = z.infer<typeof taskSchema>;
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+export type TaskIdParams = z.infer<typeof taskIdParamsSchema>;
 export type ListTasksQuery = z.infer<typeof listTasksQuerySchema>;
