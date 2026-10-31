@@ -10,11 +10,20 @@ export const apiDocs = openapi({
 		},
 		tags: [
 			{
+				name: "Auth",
+				description: "Register, sign in and manage sessions",
+			},
+			{
 				name: "Tasks",
 				description: "Create, read, update and delete tasks",
 			},
 			{ name: "Health", description: "Service status" },
 		],
+		components: {
+			securitySchemes: {
+				bearerAuth: { type: "http", scheme: "bearer" },
+			},
+		},
 	},
 	mapJsonSchema: { zod: z.toJSONSchema },
 });

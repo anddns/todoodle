@@ -1,5 +1,6 @@
 import { Elysia } from "elysia";
 import { z } from "zod";
+import { authRoutes } from "./features/auth";
 import { tasksRoutes } from "./features/tasks";
 import { errorHandler } from "./shared/errors";
 import { apiDocs } from "./shared/openapi";
@@ -13,6 +14,6 @@ export const app = new Elysia()
 		},
 		detail: { tags: ["Health"], summary: "Check that the API is running" },
 	})
-	.group("/v1", (v1) => v1.use(tasksRoutes));
+	.group("/v1", (v1) => v1.use(authRoutes).use(tasksRoutes));
 
 export type App = typeof app;
