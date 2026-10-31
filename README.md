@@ -30,16 +30,17 @@ A API sobe em `http://localhost:3000` e a documentação interativa fica em `htt
 
 ### Variáveis de ambiente
 
-As duas variáveis têm valores padrão, então o arquivo `.env` é opcional. Para alterá-las, copie o exemplo:
+Todas as variáveis têm valores padrão, então o arquivo `.env` é opcional. Para alterá-las, copie o exemplo:
 
 ```sh
 cp apps/api/.env.example apps/api/.env
 ```
 
-| Variável       | Padrão        | Descrição               |
-| -------------- | ------------- | ----------------------- |
-| `PORT`         | `3000`        | Porta do servidor       |
-| `DB_FILE_NAME` | `todoodle.db` | Arquivo do banco SQLite |
+| Variável       | Padrão        | Descrição                                                                  |
+| -------------- | ------------- | -------------------------------------------------------------------------- |
+| `PORT`         | `3000`        | Porta do servidor                                                          |
+| `DB_FILE_NAME` | `todoodle.db` | Arquivo do banco SQLite                                                    |
+| `NODE_ENV`     | —             | Com `production`, o cookie de sessão recebe o atributo `Secure` (só HTTPS) |
 
 ## Endpoints
 
@@ -47,13 +48,13 @@ As rotas da API ficam sob o prefixo de versão `/v1`. As rotas `/health` e `/ope
 
 ### Autenticação
 
-O cadastro e o login devolvem um token de sessão, válido por 30 dias. As rotas marcadas com 🔒 exigem o header `Authorization: Bearer <token>`. Cada usuário só vê e altera as próprias tarefas.
+O cadastro e o login iniciam uma sessão de 30 dias, guardada no cookie `todoodle_session` (`HttpOnly` e `SameSite=Lax`, além de `Secure` em produção). O navegador envia o cookie sozinho, e o JavaScript da página não tem acesso ao token. As rotas marcadas com 🔒 exigem uma sessão válida. Cada usuário só vê e altera as próprias tarefas.
 
 | Método | Rota                  | Descrição                              | Sucesso |
 | ------ | --------------------- | -------------------------------------- | ------- |
 | `POST` | `/v1/auth/register`   | Cadastra um usuário e inicia sessão    | `201`   |
 | `POST` | `/v1/auth/login`      | Inicia uma sessão                      | `200`   |
-| `POST` | `/v1/auth/logout`     | 🔒 Encerra a sessão do token usado     | `204`   |
+| `POST` | `/v1/auth/logout`     | 🔒 Encerra a sessão atual              | `204`   |
 | `POST` | `/v1/auth/logout-all` | 🔒 Encerra todas as sessões do usuário | `204`   |
 | `GET`  | `/v1/auth/me`         | 🔒 Retorna o usuário da sessão         | `200`   |
 
@@ -77,13 +78,14 @@ Uma tarefa tem `id` (UUID v7), `title`, `description`, `status` (`pending`, `in_
 Exemplo:
 
 ```sh
+# O -c guarda o cookie da sessão em um arquivo, e o -b o envia de volta
 curl -X POST http://localhost:3000/v1/auth/register \
+  -c cookies.txt \
   -H "content-type: application/json" \
   -d '{ "email": "ana@example.com", "password": "uma-senha-longa" }'
 
-# Use o "token" da resposta anterior
 curl -X POST http://localhost:3000/v1/tasks \
-  -H "authorization: Bearer <token>" \
+  -b cookies.txt \
   -H "content-type: application/json" \
   -d '{ "title": "Escrever o README", "dueDate": "2026-11-05" }'
 ```
@@ -107,15 +109,15 @@ Todos os erros seguem o mesmo formato:
 }
 ```
 
-| Código              | HTTP | Quando                                                 |
-| ------------------- | ---- | ------------------------------------------------------ |
-| `VALIDATION_ERROR`  | 422  | Corpo, query ou parâmetros inválidos                   |
-| `BAD_REQUEST`       | 400  | JSON malformado                                        |
-| `UNAUTHORIZED`      | 401  | Token ausente, inválido ou expirado, ou login inválido |
-| `NOT_FOUND`         | 404  | Tarefa ou rota inexistente                             |
-| `CONFLICT`          | 409  | E-mail já cadastrado                                   |
-| `TOO_MANY_REQUESTS` | 429  | Muitas tentativas de login erradas                     |
-| `INTERNAL_ERROR`    | 500  | Erro inesperado (detalhes só no log do servidor)       |
+| Código              | HTTP | Quando                                                  |
+| ------------------- | ---- | ------------------------------------------------------- |
+| `VALIDATION_ERROR`  | 422  | Corpo, query ou parâmetros inválidos                    |
+| `BAD_REQUEST`       | 400  | JSON malformado                                         |
+| `UNAUTHORIZED`      | 401  | Sessão ausente, inválida ou expirada, ou login inválido |
+| `NOT_FOUND`         | 404  | Tarefa ou rota inexistente                              |
+| `CONFLICT`          | 409  | E-mail já cadastrado                                    |
+| `TOO_MANY_REQUESTS` | 429  | Muitas tentativas de login erradas                      |
+| `INTERNAL_ERROR`    | 500  | Erro inesperado (detalhes só no log do servidor)        |
 
 ## Estrutura
 

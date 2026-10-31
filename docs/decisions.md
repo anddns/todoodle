@@ -110,15 +110,15 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 **Decisão:** todas as respostas de erro seguem o formato `{ "error": { "code", "message", "details?" } }`, produzido por um handler global.
 
-| Código              | HTTP | Quando                                       |
-| ------------------- | ---- | -------------------------------------------- |
-| `VALIDATION_ERROR`  | 422  | Corpo, query ou parâmetros inválidos         |
-| `BAD_REQUEST`       | 400  | JSON malformado                              |
-| `UNAUTHORIZED`      | 401  | Token ausente ou inválido, ou login inválido |
-| `NOT_FOUND`         | 404  | Tarefa ou rota inexistente                   |
-| `CONFLICT`          | 409  | E-mail já cadastrado                         |
-| `TOO_MANY_REQUESTS` | 429  | Muitas tentativas de login erradas           |
-| `INTERNAL_ERROR`    | 500  | Erro inesperado                              |
+| Código              | HTTP | Quando                                        |
+| ------------------- | ---- | --------------------------------------------- |
+| `VALIDATION_ERROR`  | 422  | Corpo, query ou parâmetros inválidos          |
+| `BAD_REQUEST`       | 400  | JSON malformado                               |
+| `UNAUTHORIZED`      | 401  | Sessão ausente ou inválida, ou login inválido |
+| `NOT_FOUND`         | 404  | Tarefa ou rota inexistente                    |
+| `CONFLICT`          | 409  | E-mail já cadastrado                          |
+| `TOO_MANY_REQUESTS` | 429  | Muitas tentativas de login erradas            |
+| `INTERNAL_ERROR`    | 500  | Erro inesperado                               |
 
 **Motivo:** o campo `code` dá ao cliente um valor estável para tratar cada caso, sem depender do texto da mensagem. Erros inesperados não expõem detalhes internos: eles aparecem só no log do servidor.
 
@@ -163,15 +163,19 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 ## 15. Autenticação com sessões próprias
 
-**Decisão:** implementar a autenticação no próprio projeto, sem biblioteca de auth. As senhas são guardadas com `Bun.password` (argon2id). O login gera um token opaco aleatório (32 bytes), enviado pelo cliente como `Authorization: Bearer <token>`. O banco guarda só o hash SHA-256 do token, na tabela `sessions`, com validade de 30 dias.
+**Decisão:** implementar a autenticação no próprio projeto, sem biblioteca de auth. As senhas são guardadas com `Bun.password` (argon2id). O login gera um token opaco aleatório (32 bytes), entregue ao navegador no cookie `todoodle_session`, com `HttpOnly`, `SameSite=Lax` e, em produção, `Secure`. O banco guarda só o hash SHA-256 do token, na tabela `sessions`, com validade de 30 dias.
 
 **Motivo:** não acrescenta dependências e segue as convenções do projeto (schemas Zod, OpenAPI e formato de erros), que uma biblioteca traria com rotas e tabelas próprias. Como a sessão fica no banco, o logout revoga o token de verdade. Guardar só o hash impede que um vazamento do banco exponha tokens válidos. As rotas protegidas usam a opção `auth: true`, uma macro do Elysia que valida o token e entrega o usuário ao handler, com tipos.
+
+**Por que cookie, e não o header `Authorization`:** o cliente principal é o frontend no navegador. Com `HttpOnly`, o JavaScript da página não consegue ler o token, então um script injetado (XSS) não tem como roubá-lo, como roubaria de um `localStorage`. Por isso o token também não aparece no corpo das respostas. A primeira versão usava `Authorization: Bearer`, e foi trocada antes de existir qualquer cliente.
+
+**CSRF:** com `SameSite=Lax`, o navegador não envia o cookie em `POST`, `PATCH` ou `DELETE` vindos de outro site. Além disso, a API só aceita corpos JSON, e um formulário HTML de outro site não consegue enviar `application/json`. Um corpo `text/plain` falha na validação com `422`.
 
 **Detalhes:**
 
 - O e-mail é normalizado (sem espaços e em minúsculas) antes de ser salvo ou consultado.
 - O login responde com a mesma mensagem para e-mail desconhecido e senha errada, e verifica um hash fictício quando o e-mail não existe, para que o tempo de resposta também não revele quais e-mails estão cadastrados.
-- Sessões expiradas são apagadas quando o token é usado de novo.
+- Sessões expiradas são apagadas quando o token é usado de novo, e um cookie inválido é removido do navegador na resposta `401`.
 - O cadastro já inicia uma sessão, para o cliente não precisar fazer login em seguida.
 - Depois de 5 tentativas erradas para o mesmo IP e e-mail em 15 minutos, o login responde `429` com o header `Retry-After`, até a janela terminar. Um login certo zera a contagem. A chave combina IP e e-mail para que alguém não consiga bloquear a conta de outra pessoa a partir de outro endereço. A contagem fica em memória, o que basta enquanto a API roda em um único processo. Com várias instâncias, ou atrás de um proxy (que exige ler o IP do `X-Forwarded-For`), ela precisará ser revista.
 - `POST /v1/auth/logout-all` revoga todas as sessões do usuário, para o caso de um token vazado ou de um dispositivo perdido.
