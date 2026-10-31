@@ -1,0 +1,16 @@
+import type { CreateTaskInput, Task } from "@todoodle/shared";
+import { type TaskRow, tasksRepository } from "./tasks.repository";
+
+function toTask(row: TaskRow): Task {
+	return {
+		...row,
+		createdAt: row.createdAt.toISOString(),
+		updatedAt: row.updatedAt.toISOString(),
+	};
+}
+
+export const tasksService = {
+	create(input: CreateTaskInput): Task {
+		return toTask(tasksRepository.create(input));
+	},
+};
