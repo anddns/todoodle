@@ -43,7 +43,24 @@ cp apps/api/.env.example apps/api/.env
 
 ## Endpoints
 
-As rotas de tarefas ficam sob o prefixo de versão `/v1`. As rotas `/health` e `/openapi` ficam na raiz, porque descrevem o serviço, e não o contrato da API.
+As rotas da API ficam sob o prefixo de versão `/v1`. As rotas `/health` e `/openapi` ficam na raiz, porque descrevem o serviço, e não o contrato da API.
+
+### Autenticação
+
+O cadastro e o login devolvem um token de sessão, válido por 30 dias. As rotas marcadas com 🔒 exigem o header `Authorization: Bearer <token>`. Cada usuário só vê e altera as próprias tarefas.
+
+| Método | Rota                | Descrição                           | Sucesso |
+| ------ | ------------------- | ----------------------------------- | ------- |
+| `POST` | `/v1/auth/register` | Cadastra um usuário e inicia sessão | `201`   |
+| `POST` | `/v1/auth/login`    | Inicia uma sessão                   | `200`   |
+| `POST` | `/v1/auth/logout`   | 🔒 Encerra a sessão do token usado  | `204`   |
+| `GET`  | `/v1/auth/me`       | 🔒 Retorna o usuário da sessão      | `200`   |
+
+A senha precisa ter de 8 a 128 caracteres, e o e-mail é salvo em minúsculas.
+
+### Tarefas
+
+Todas as rotas de tarefas exigem autenticação 🔒.
 
 | Método   | Rota            | Descrição                                        | Sucesso |
 | -------- | --------------- | ------------------------------------------------ | ------- |
@@ -59,7 +76,13 @@ Uma tarefa tem `id` (UUID v7), `title`, `description`, `status` (`pending`, `in_
 Exemplo:
 
 ```sh
+curl -X POST http://localhost:3000/v1/auth/register \
+  -H "content-type: application/json" \
+  -d '{ "email": "ana@example.com", "password": "uma-senha-longa" }'
+
+# Use o "token" da resposta anterior
 curl -X POST http://localhost:3000/v1/tasks \
+  -H "authorization: Bearer <token>" \
   -H "content-type: application/json" \
   -d '{ "title": "Escrever o README", "dueDate": "2026-11-05" }'
 ```
@@ -83,12 +106,14 @@ Todos os erros seguem o mesmo formato:
 }
 ```
 
-| Código             | HTTP | Quando                                           |
-| ------------------ | ---- | ------------------------------------------------ |
-| `VALIDATION_ERROR` | 422  | Corpo, query ou parâmetros inválidos             |
-| `BAD_REQUEST`      | 400  | JSON malformado                                  |
-| `NOT_FOUND`        | 404  | Tarefa ou rota inexistente                       |
-| `INTERNAL_ERROR`   | 500  | Erro inesperado (detalhes só no log do servidor) |
+| Código             | HTTP | Quando                                                 |
+| ------------------ | ---- | ------------------------------------------------------ |
+| `VALIDATION_ERROR` | 422  | Corpo, query ou parâmetros inválidos                   |
+| `BAD_REQUEST`      | 400  | JSON malformado                                        |
+| `UNAUTHORIZED`     | 401  | Token ausente, inválido ou expirado, ou login inválido |
+| `NOT_FOUND`        | 404  | Tarefa ou rota inexistente                             |
+| `CONFLICT`         | 409  | E-mail já cadastrado                                   |
+| `INTERNAL_ERROR`   | 500  | Erro inesperado (detalhes só no log do servidor)       |
 
 ## Estrutura
 
@@ -99,6 +124,7 @@ todoodle/
 │       ├── drizzle/              # migrations geradas pelo drizzle-kit
 │       └── src/
 │           ├── features/
+│           │   ├── auth/         # usuários, sessões e o guard `auth`
 │           │   └── tasks/        # uma pasta por feature
 │           ├── shared/           # config, banco, erros, OpenAPI
 │           ├── app.ts            # monta o app e registra as features
@@ -124,7 +150,7 @@ O código da API é agrupado por feature, e não por camada técnica. Cada featu
 | `tasks.table.ts`      | Definição da tabela no Drizzle                   |
 | `index.ts`            | Interface pública da feature                     |
 
-Uma feature só expõe o que está no seu `index.ts`, e uma feature não importa arquivos internos de outra.
+Uma feature só expõe o que está no seu `index.ts`, e uma feature não importa arquivos internos de outra. A única exceção são os arquivos `*.table.ts`, que importam as tabelas de outras features diretamente para declarar chaves estrangeiras.
 
 Os schemas Zod ficam em `packages/shared`, para que a API e um futuro frontend usem a mesma validação e os mesmos tipos.
 

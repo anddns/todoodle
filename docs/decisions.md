@@ -18,6 +18,8 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 | 12  | [Biome e `bun check` como ferramentas de qualidade](#12-biome-e-bun-check-como-ferramentas-de-qualidade) | Ferramentas |
 | 13  | [Idiomas do projeto](#13-idiomas-do-projeto)                                                             | Convenções  |
 | 14  | [Versionamento da API pelo prefixo `/v1`](#14-versionamento-da-api-pelo-prefixo-v1)                      | API         |
+| 15  | [Autenticação com sessões próprias](#15-autenticação-com-sessões-próprias)                               | Segurança   |
+| 16  | [Tarefas por usuário](#16-tarefas-por-usuário)                                                           | Modelo      |
 
 ## 1. Bun como runtime e gerenciador de pacotes
 
@@ -53,6 +55,8 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 **Motivo:** tudo o que pertence a uma feature fica no mesmo lugar. Cada feature só expõe o que está no seu `index.ts`, e uma feature não importa arquivos internos de outra. Isso deixa claro o que é público e facilita adicionar features novas.
 
 **Convenção:** as tabelas do Drizzle ficam em arquivos `*.table.ts`, e não `*.schema.ts`. No projeto, "schema" se refere aos schemas Zod do pacote compartilhado.
+
+**Exceção:** um `*.table.ts` pode importar a tabela de outra feature diretamente (por exemplo, `tasks.table.ts` importa `auth/auth.table.ts` para a chave estrangeira). O `drizzle-kit` carrega os arquivos de tabela isoladamente, e passar pelo `index.ts` da feature carregaria também rotas, serviços e a conexão com o banco.
 
 ## 5. SQLite com Drizzle ORM
 
@@ -106,12 +110,14 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 **Decisão:** todas as respostas de erro seguem o formato `{ "error": { "code", "message", "details?" } }`, produzido por um handler global.
 
-| Código             | HTTP | Quando                               |
-| ------------------ | ---- | ------------------------------------ |
-| `VALIDATION_ERROR` | 422  | Corpo, query ou parâmetros inválidos |
-| `BAD_REQUEST`      | 400  | JSON malformado                      |
-| `NOT_FOUND`        | 404  | Tarefa ou rota inexistente           |
-| `INTERNAL_ERROR`   | 500  | Erro inesperado                      |
+| Código             | HTTP | Quando                                       |
+| ------------------ | ---- | -------------------------------------------- |
+| `VALIDATION_ERROR` | 422  | Corpo, query ou parâmetros inválidos         |
+| `BAD_REQUEST`      | 400  | JSON malformado                              |
+| `UNAUTHORIZED`     | 401  | Token ausente ou inválido, ou login inválido |
+| `NOT_FOUND`        | 404  | Tarefa ou rota inexistente                   |
+| `CONFLICT`         | 409  | E-mail já cadastrado                         |
+| `INTERNAL_ERROR`   | 500  | Erro inesperado                              |
 
 **Motivo:** o campo `code` dá ao cliente um valor estável para tratar cada caso, sem depender do texto da mensagem. Erros inesperados não expõem detalhes internos: eles aparecem só no log do servidor.
 
@@ -153,3 +159,31 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 - **Sem versionamento:** suficiente enquanto o único cliente é o próprio frontend, publicado junto com a API no mesmo monorepo, mas tornaria uma futura mudança incompatível mais difícil.
 - **Versão em header ou query string** (como `Accept: application/vnd.todoodle.v1+json`): é mais flexível, mas também menos visível e mais difícil de testar e documentar, sem benefício para um projeto deste tamanho.
+
+## 15. Autenticação com sessões próprias
+
+**Decisão:** implementar a autenticação no próprio projeto, sem biblioteca de auth. As senhas são guardadas com `Bun.password` (argon2id). O login gera um token opaco aleatório (32 bytes), enviado pelo cliente como `Authorization: Bearer <token>`. O banco guarda só o hash SHA-256 do token, na tabela `sessions`, com validade de 30 dias.
+
+**Motivo:** não acrescenta dependências e segue as convenções do projeto (schemas Zod, OpenAPI e formato de erros), que uma biblioteca traria com rotas e tabelas próprias. Como a sessão fica no banco, o logout revoga o token de verdade. Guardar só o hash impede que um vazamento do banco exponha tokens válidos. As rotas protegidas usam a opção `auth: true`, uma macro do Elysia que valida o token e entrega o usuário ao handler, com tipos.
+
+**Detalhes:**
+
+- O e-mail é normalizado (sem espaços e em minúsculas) antes de ser salvo ou consultado.
+- O login responde com a mesma mensagem para e-mail desconhecido e senha errada, e verifica um hash fictício quando o e-mail não existe, para que o tempo de resposta também não revele quais e-mails estão cadastrados.
+- Sessões expiradas são apagadas quando o token é usado de novo.
+- O cadastro já inicia uma sessão, para o cliente não precisar fazer login em seguida.
+
+**Alternativas:**
+
+- **JWT** (`@elysiajs/jwt`): dispensa a tabela de sessões, mas não permite revogar um token antes de ele expirar sem acrescentar refresh tokens ou uma lista de bloqueio.
+- **Better Auth**: completo, com OAuth e cookies prontos, mas monta rotas e tabelas próprias fora das convenções do projeto, e traz mais do que a API precisa agora.
+
+**Fora do escopo por enquanto:** limite de tentativas de login, confirmação de e-mail e recuperação de senha.
+
+## 16. Tarefas por usuário
+
+**Decisão:** cada tarefa pertence a um usuário (`tasks.user_id`, com `ON DELETE CASCADE`), e todas as consultas do repositório filtram pelo dono. Buscar, alterar ou excluir a tarefa de outro usuário responde `404`, e não `403`.
+
+**Motivo:** filtrar no repositório garante que nenhuma rota esqueça a verificação. O `404` não revela se a tarefa existe, e para o usuário ela de fato não existe. A exclusão em cascata apaga as tarefas e as sessões junto com o usuário.
+
+**Detalhe:** a migration `0002_add_user_to_tasks` recria a tabela `tasks` e descarta as tarefas existentes, porque elas não tinham dono e a coluna `user_id` é obrigatória. O SQL foi escrito à mão, já que o gerado pelo `drizzle-kit` não funcionava no SQLite (coluna `NOT NULL` sem valor padrão) e omitia o `ON DELETE CASCADE`.

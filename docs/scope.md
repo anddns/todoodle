@@ -13,7 +13,13 @@ Uma API REST que permite a um cliente:
 - Marcar uma tarefa como finalizada
 - Excluir uma tarefa
 
-Não há usuários na v1: todas as tarefas pertencem a um único dono implícito.
+Não há usuários na v1: todas as tarefas pertencem a um único dono implícito. Isso mudou no marco de autenticação, descrito abaixo.
+
+## Autenticação e tarefas por usuário
+
+- Cadastro com e-mail e senha
+- Login, logout e consulta do usuário da sessão
+- Rotas de tarefas protegidas: cada usuário só vê e altera as próprias tarefas
 
 ## Entidades
 
@@ -29,6 +35,18 @@ Não há usuários na v1: todas as tarefas pertencem a um único dono implícito
 | `createdAt`   | data e hora ISO 8601                           | Definido pela API                    |
 | `updatedAt`   | data e hora ISO 8601                           | Atualizado pela API a cada alteração |
 
+### User
+
+Adicionada no marco de autenticação.
+
+| Campo       | Tipo                 | Observações                |
+| ----------- | -------------------- | -------------------------- |
+| `id`        | string (UUID v7)     | Gerado pela API            |
+| `email`     | string               | Único, salvo em minúsculas |
+| `createdAt` | data e hora ISO 8601 | Definido pela API          |
+
+A senha é guardada só como hash e nunca aparece nas respostas.
+
 Candidatas para depois: `Project` (agrupar tarefas) e `Tag`.
 
 ## Fora do escopo da v1
@@ -40,7 +58,7 @@ Candidatas para depois: `Project` (agrupar tarefas) e `Tag`.
 
 ## Próximos marcos
 
-1. Autenticação e tarefas por usuário
-2. CI com GitHub Actions
+1. Autenticação e tarefas por usuário (concluído)
+2. CI com GitHub Actions (concluído)
 3. Frontend em `apps/web`
 4. Deploy
