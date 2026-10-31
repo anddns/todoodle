@@ -1,0 +1,22 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+*.tsbuildinfo
+
+# Ambiente
+.env
+.env.*
+!.env.example
+
+# Banco de dados local (SQLite)
+*.db
+*.db-journal
+*.sqlite
+
+# Logs
+*.log
+
+# Sistema
+.DS_Store
