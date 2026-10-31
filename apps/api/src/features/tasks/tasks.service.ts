@@ -1,4 +1,4 @@
-import type { CreateTaskInput, Task } from "@todoodle/shared";
+import type { CreateTaskInput, ListTasksQuery, Task } from "@todoodle/shared";
 import { type TaskRow, tasksRepository } from "./tasks.repository";
 
 function toTask(row: TaskRow): Task {
@@ -12,5 +12,9 @@ function toTask(row: TaskRow): Task {
 export const tasksService = {
 	create(input: CreateTaskInput): Task {
 		return toTask(tasksRepository.create(input));
+	},
+
+	list(query: ListTasksQuery): Task[] {
+		return tasksRepository.findAll(query).map(toTask);
 	},
 };
