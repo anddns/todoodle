@@ -18,6 +18,14 @@ export const errorHandler = new Elysia({ name: "error-handler" }).onError(
 	({ code, error, status }) => {
 		switch (code) {
 			case "VALIDATION":
+				// A response that fails its schema is a server bug, not a client error
+				if (error.type === "response") {
+					console.error(error);
+					return status(
+						500,
+						errorBody("INTERNAL_ERROR", "Internal server error"),
+					);
+				}
 				return status(
 					422,
 					errorBody(
