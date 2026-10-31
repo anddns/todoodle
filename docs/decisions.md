@@ -110,14 +110,15 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 **Decisão:** todas as respostas de erro seguem o formato `{ "error": { "code", "message", "details?" } }`, produzido por um handler global.
 
-| Código             | HTTP | Quando                                       |
-| ------------------ | ---- | -------------------------------------------- |
-| `VALIDATION_ERROR` | 422  | Corpo, query ou parâmetros inválidos         |
-| `BAD_REQUEST`      | 400  | JSON malformado                              |
-| `UNAUTHORIZED`     | 401  | Token ausente ou inválido, ou login inválido |
-| `NOT_FOUND`        | 404  | Tarefa ou rota inexistente                   |
-| `CONFLICT`         | 409  | E-mail já cadastrado                         |
-| `INTERNAL_ERROR`   | 500  | Erro inesperado                              |
+| Código              | HTTP | Quando                                       |
+| ------------------- | ---- | -------------------------------------------- |
+| `VALIDATION_ERROR`  | 422  | Corpo, query ou parâmetros inválidos         |
+| `BAD_REQUEST`       | 400  | JSON malformado                              |
+| `UNAUTHORIZED`      | 401  | Token ausente ou inválido, ou login inválido |
+| `NOT_FOUND`         | 404  | Tarefa ou rota inexistente                   |
+| `CONFLICT`          | 409  | E-mail já cadastrado                         |
+| `TOO_MANY_REQUESTS` | 429  | Muitas tentativas de login erradas           |
+| `INTERNAL_ERROR`    | 500  | Erro inesperado                              |
 
 **Motivo:** o campo `code` dá ao cliente um valor estável para tratar cada caso, sem depender do texto da mensagem. Erros inesperados não expõem detalhes internos: eles aparecem só no log do servidor.
 
@@ -172,13 +173,15 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 - O login responde com a mesma mensagem para e-mail desconhecido e senha errada, e verifica um hash fictício quando o e-mail não existe, para que o tempo de resposta também não revele quais e-mails estão cadastrados.
 - Sessões expiradas são apagadas quando o token é usado de novo.
 - O cadastro já inicia uma sessão, para o cliente não precisar fazer login em seguida.
+- Depois de 5 tentativas erradas para o mesmo IP e e-mail em 15 minutos, o login responde `429` com o header `Retry-After`, até a janela terminar. Um login certo zera a contagem. A chave combina IP e e-mail para que alguém não consiga bloquear a conta de outra pessoa a partir de outro endereço. A contagem fica em memória, o que basta enquanto a API roda em um único processo. Com várias instâncias, ou atrás de um proxy (que exige ler o IP do `X-Forwarded-For`), ela precisará ser revista.
+- `POST /v1/auth/logout-all` revoga todas as sessões do usuário, para o caso de um token vazado ou de um dispositivo perdido.
 
 **Alternativas:**
 
 - **JWT** (`@elysiajs/jwt`): dispensa a tabela de sessões, mas não permite revogar um token antes de ele expirar sem acrescentar refresh tokens ou uma lista de bloqueio.
 - **Better Auth**: completo, com OAuth e cookies prontos, mas monta rotas e tabelas próprias fora das convenções do projeto, e traz mais do que a API precisa agora.
 
-**Fora do escopo por enquanto:** limite de tentativas de login, confirmação de e-mail e recuperação de senha.
+**Fora do escopo por enquanto:** confirmação de e-mail, recuperação de senha e troca de senha.
 
 ## 16. Tarefas por usuário
 

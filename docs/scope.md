@@ -18,7 +18,8 @@ Não há usuários na v1: todas as tarefas pertencem a um único dono implícito
 ## Autenticação e tarefas por usuário
 
 - Cadastro com e-mail e senha
-- Login, logout e consulta do usuário da sessão
+- Login, logout (da sessão atual ou de todas) e consulta do usuário da sessão
+- Bloqueio temporário do login após várias tentativas erradas
 - Rotas de tarefas protegidas: cada usuário só vê e altera as próprias tarefas
 
 ## Entidades

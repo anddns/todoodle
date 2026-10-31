@@ -49,14 +49,15 @@ As rotas da API ficam sob o prefixo de versão `/v1`. As rotas `/health` e `/ope
 
 O cadastro e o login devolvem um token de sessão, válido por 30 dias. As rotas marcadas com 🔒 exigem o header `Authorization: Bearer <token>`. Cada usuário só vê e altera as próprias tarefas.
 
-| Método | Rota                | Descrição                           | Sucesso |
-| ------ | ------------------- | ----------------------------------- | ------- |
-| `POST` | `/v1/auth/register` | Cadastra um usuário e inicia sessão | `201`   |
-| `POST` | `/v1/auth/login`    | Inicia uma sessão                   | `200`   |
-| `POST` | `/v1/auth/logout`   | 🔒 Encerra a sessão do token usado  | `204`   |
-| `GET`  | `/v1/auth/me`       | 🔒 Retorna o usuário da sessão      | `200`   |
+| Método | Rota                  | Descrição                              | Sucesso |
+| ------ | --------------------- | -------------------------------------- | ------- |
+| `POST` | `/v1/auth/register`   | Cadastra um usuário e inicia sessão    | `201`   |
+| `POST` | `/v1/auth/login`      | Inicia uma sessão                      | `200`   |
+| `POST` | `/v1/auth/logout`     | 🔒 Encerra a sessão do token usado     | `204`   |
+| `POST` | `/v1/auth/logout-all` | 🔒 Encerra todas as sessões do usuário | `204`   |
+| `GET`  | `/v1/auth/me`         | 🔒 Retorna o usuário da sessão         | `200`   |
 
-A senha precisa ter de 8 a 128 caracteres, e o e-mail é salvo em minúsculas.
+A senha precisa ter de 8 a 128 caracteres, e o e-mail é salvo em minúsculas. Depois de 5 tentativas de login erradas para o mesmo e-mail e IP, o login fica bloqueado por até 15 minutos (`429`, com o header `Retry-After`).
 
 ### Tarefas
 
@@ -106,14 +107,15 @@ Todos os erros seguem o mesmo formato:
 }
 ```
 
-| Código             | HTTP | Quando                                                 |
-| ------------------ | ---- | ------------------------------------------------------ |
-| `VALIDATION_ERROR` | 422  | Corpo, query ou parâmetros inválidos                   |
-| `BAD_REQUEST`      | 400  | JSON malformado                                        |
-| `UNAUTHORIZED`     | 401  | Token ausente, inválido ou expirado, ou login inválido |
-| `NOT_FOUND`        | 404  | Tarefa ou rota inexistente                             |
-| `CONFLICT`         | 409  | E-mail já cadastrado                                   |
-| `INTERNAL_ERROR`   | 500  | Erro inesperado (detalhes só no log do servidor)       |
+| Código              | HTTP | Quando                                                 |
+| ------------------- | ---- | ------------------------------------------------------ |
+| `VALIDATION_ERROR`  | 422  | Corpo, query ou parâmetros inválidos                   |
+| `BAD_REQUEST`       | 400  | JSON malformado                                        |
+| `UNAUTHORIZED`      | 401  | Token ausente, inválido ou expirado, ou login inválido |
+| `NOT_FOUND`         | 404  | Tarefa ou rota inexistente                             |
+| `CONFLICT`          | 409  | E-mail já cadastrado                                   |
+| `TOO_MANY_REQUESTS` | 429  | Muitas tentativas de login erradas                     |
+| `INTERNAL_ERROR`    | 500  | Erro inesperado (detalhes só no log do servidor)       |
 
 ## Estrutura
 
