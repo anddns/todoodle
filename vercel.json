@@ -4,7 +4,6 @@
 	"framework": null,
 	"installCommand": "bun install --frozen-lockfile",
 	"buildCommand": "bun run db:migrate && bun run build",
-	"ignoreCommand": "[ \"$VERCEL_ENV\" != \"production\" ]",
 	"outputDirectory": "apps/web/dist",
 	"rewrites": [
 		{ "source": "/v1/:path*", "destination": "/api" },
