@@ -8,21 +8,21 @@ export type SessionRow = typeof sessions.$inferSelect;
 export type NewSessionRow = typeof sessions.$inferInsert;
 
 export const authRepository = {
-	createUser(data: NewUserRow): UserRow {
+	async createUser(data: NewUserRow): Promise<UserRow> {
 		return db.insert(users).values(data).returning().get();
 	},
 
-	findUserByEmail(email: string): UserRow | undefined {
+	async findUserByEmail(email: string): Promise<UserRow | undefined> {
 		return db.select().from(users).where(eq(users.email, email)).get();
 	},
 
-	createSession(data: NewSessionRow): SessionRow {
+	async createSession(data: NewSessionRow): Promise<SessionRow> {
 		return db.insert(sessions).values(data).returning().get();
 	},
 
-	findSessionWithUser(
+	async findSessionWithUser(
 		id: string,
-	): { session: SessionRow; user: UserRow } | undefined {
+	): Promise<{ session: SessionRow; user: UserRow } | undefined> {
 		return db
 			.select({ session: sessions, user: users })
 			.from(sessions)
@@ -31,11 +31,11 @@ export const authRepository = {
 			.get();
 	},
 
-	deleteSession(id: string): void {
-		db.delete(sessions).where(eq(sessions.id, id)).run();
+	async deleteSession(id: string): Promise<void> {
+		await db.delete(sessions).where(eq(sessions.id, id)).run();
 	},
 
-	deleteUserSessions(userId: string): void {
-		db.delete(sessions).where(eq(sessions.userId, userId)).run();
+	async deleteUserSessions(userId: string): Promise<void> {
+		await db.delete(sessions).where(eq(sessions.userId, userId)).run();
 	},
 };

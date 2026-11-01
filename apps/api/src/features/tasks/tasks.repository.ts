@@ -12,11 +12,14 @@ function ownTask(userId: string, id: string) {
 }
 
 export const tasksRepository = {
-	create(data: NewTaskRow): TaskRow {
+	async create(data: NewTaskRow): Promise<TaskRow> {
 		return db.insert(tasks).values(data).returning().get();
 	},
 
-	findAll(userId: string, filters: { status?: TaskStatus }): TaskRow[] {
+	async findAll(
+		userId: string,
+		filters: { status?: TaskStatus },
+	): Promise<TaskRow[]> {
 		return db
 			.select()
 			.from(tasks)
@@ -30,15 +33,15 @@ export const tasksRepository = {
 			.all();
 	},
 
-	findById(userId: string, id: string): TaskRow | undefined {
+	async findById(userId: string, id: string): Promise<TaskRow | undefined> {
 		return db.select().from(tasks).where(ownTask(userId, id)).get();
 	},
 
-	update(
+	async update(
 		userId: string,
 		id: string,
 		data: Partial<NewTaskRow>,
-	): TaskRow | undefined {
+	): Promise<TaskRow | undefined> {
 		return db
 			.update(tasks)
 			.set(data)
@@ -47,8 +50,8 @@ export const tasksRepository = {
 			.get();
 	},
 
-	delete(userId: string, id: string): boolean {
-		const deleted = db
+	async delete(userId: string, id: string): Promise<boolean> {
+		const deleted = await db
 			.delete(tasks)
 			.where(ownTask(userId, id))
 			.returning({ id: tasks.id })

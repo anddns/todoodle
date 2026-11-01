@@ -1,9 +1,12 @@
-import { Database } from "bun:sqlite";
-import { drizzle } from "drizzle-orm/bun-sqlite";
+import { createClient } from "@libsql/client";
+import { drizzle } from "drizzle-orm/libsql";
 import { config } from "../config";
 
-const sqlite = new Database(config.dbFileName);
+const client = createClient({
+	url: config.databaseUrl,
+	authToken: config.databaseAuthToken,
+});
 // SQLite ignores foreign keys unless enabled on each connection
-sqlite.run("PRAGMA foreign_keys = ON");
+await client.execute("PRAGMA foreign_keys = ON");
 
-export const db = drizzle({ client: sqlite });
+export const db = drizzle({ client });

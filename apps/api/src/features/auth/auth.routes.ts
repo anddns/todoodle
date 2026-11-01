@@ -91,8 +91,8 @@ export const authRoutes = new Elysia({
 	)
 	.post(
 		"/logout",
-		({ token, cookie, status }) => {
-			authService.logout(token);
+		async ({ token, cookie, status }) => {
+			await authService.logout(token);
 			clearSessionCookie(cookie);
 			return status(204, undefined);
 		},
@@ -111,8 +111,8 @@ export const authRoutes = new Elysia({
 	)
 	.post(
 		"/logout-all",
-		({ user, cookie, status }) => {
-			authService.logoutAll(user.id);
+		async ({ user, cookie, status }) => {
+			await authService.logoutAll(user.id);
 			clearSessionCookie(cookie);
 			return status(204, undefined);
 		},

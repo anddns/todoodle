@@ -1,6 +1,9 @@
-import { migrate } from "drizzle-orm/bun-sqlite/migrator";
+import { migrate } from "drizzle-orm/libsql/migrator";
 import { db } from "./client";
 
-migrate(db, { migrationsFolder: "./drizzle" });
+// Resolved from this file, so the script works from any working directory
+await migrate(db, {
+	migrationsFolder: `${import.meta.dirname}/../../../drizzle`,
+});
 
 console.log("Migrations applied");

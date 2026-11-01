@@ -24,7 +24,8 @@ export const tasksRoutes = new Elysia({
 	.use(authGuard)
 	.post(
 		"",
-		({ user, body, status }) => status(201, tasksService.create(user.id, body)),
+		async ({ user, body, status }) =>
+			status(201, await tasksService.create(user.id, body)),
 		{
 			auth: true,
 			body: createTaskSchema,
@@ -52,8 +53,9 @@ export const tasksRoutes = new Elysia({
 	})
 	.get(
 		"/:id",
-		({ user, params, status }) =>
-			tasksService.getById(user.id, params.id) ?? status(404, taskNotFound),
+		async ({ user, params, status }) =>
+			(await tasksService.getById(user.id, params.id)) ??
+			status(404, taskNotFound),
 		{
 			auth: true,
 			params: taskIdParamsSchema,
@@ -68,8 +70,8 @@ export const tasksRoutes = new Elysia({
 	)
 	.patch(
 		"/:id",
-		({ user, params, body, status }) =>
-			tasksService.update(user.id, params.id, body) ??
+		async ({ user, params, body, status }) =>
+			(await tasksService.update(user.id, params.id, body)) ??
 			status(404, taskNotFound),
 		{
 			auth: true,
@@ -90,8 +92,8 @@ export const tasksRoutes = new Elysia({
 	)
 	.delete(
 		"/:id",
-		({ user, params, status }) =>
-			tasksService.delete(user.id, params.id)
+		async ({ user, params, status }) =>
+			(await tasksService.delete(user.id, params.id))
 				? status(204, undefined)
 				: status(404, taskNotFound),
 		{

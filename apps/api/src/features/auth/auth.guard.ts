@@ -16,9 +16,9 @@ export const sessionAuth = [{ sessionCookie: [] }];
 /** Adds the `auth` route option, which requires a valid session cookie. */
 export const authGuard = new Elysia({ name: "auth-guard" }).macro({
 	auth: {
-		resolve({ cookie, status }) {
+		async resolve({ cookie, status }) {
 			const token = readSessionCookie(cookie);
-			const user = token ? authService.authenticate(token) : null;
+			const user = token ? await authService.authenticate(token) : null;
 			if (!user || !token) {
 				// Clears a stale cookie so the browser stops sending it
 				clearSessionCookie(cookie);

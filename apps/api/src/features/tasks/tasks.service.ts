@@ -15,25 +15,29 @@ function toTask({ userId: _userId, ...row }: TaskRow): Task {
 }
 
 export const tasksService = {
-	create(userId: string, input: CreateTaskInput): Task {
-		return toTask(tasksRepository.create({ ...input, userId }));
+	async create(userId: string, input: CreateTaskInput): Promise<Task> {
+		return toTask(await tasksRepository.create({ ...input, userId }));
 	},
 
-	list(userId: string, query: ListTasksQuery): Task[] {
-		return tasksRepository.findAll(userId, query).map(toTask);
+	async list(userId: string, query: ListTasksQuery): Promise<Task[]> {
+		return (await tasksRepository.findAll(userId, query)).map(toTask);
 	},
 
-	getById(userId: string, id: string): Task | null {
-		const row = tasksRepository.findById(userId, id);
+	async getById(userId: string, id: string): Promise<Task | null> {
+		const row = await tasksRepository.findById(userId, id);
 		return row ? toTask(row) : null;
 	},
 
-	update(userId: string, id: string, input: UpdateTaskInput): Task | null {
-		const row = tasksRepository.update(userId, id, input);
+	async update(
+		userId: string,
+		id: string,
+		input: UpdateTaskInput,
+	): Promise<Task | null> {
+		const row = await tasksRepository.update(userId, id, input);
 		return row ? toTask(row) : null;
 	},
 
-	delete(userId: string, id: string): boolean {
+	delete(userId: string, id: string): Promise<boolean> {
 		return tasksRepository.delete(userId, id);
 	},
 };

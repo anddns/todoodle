@@ -21,11 +21,11 @@ function hashToken(token: string): string {
 	return new Bun.CryptoHasher("sha256").update(token).digest("hex");
 }
 
-function startSession(user: UserRow): Session {
+async function startSession(user: UserRow): Promise<Session> {
 	const token = Buffer.from(
 		crypto.getRandomValues(new Uint8Array(32)),
 	).toString("base64url");
-	const session = authRepository.createSession({
+	const session = await authRepository.createSession({
 		id: hashToken(token),
 		userId: user.id,
 		expiresAt: new Date(Date.now() + SESSION_TTL_MS),
@@ -40,8 +40,8 @@ function startSession(user: UserRow): Session {
 export const authService = {
 	/** Returns null when the email is already registered. */
 	async register(input: RegisterInput): Promise<Session | null> {
-		if (authRepository.findUserByEmail(input.email)) return null;
-		const user = authRepository.createUser({
+		if (await authRepository.findUserByEmail(input.email)) return null;
+		const user = await authRepository.createUser({
 			email: input.email,
 			passwordHash: await Bun.password.hash(input.password),
 		});
@@ -50,7 +50,7 @@ export const authService = {
 
 	/** Returns null when the email or password is wrong. */
 	async login(input: LoginInput): Promise<Session | null> {
-		const user = authRepository.findUserByEmail(input.email);
+		const user = await authRepository.findUserByEmail(input.email);
 		const valid = await Bun.password.verify(
 			input.password,
 			user?.passwordHash ?? dummyPasswordHash,
@@ -59,22 +59,22 @@ export const authService = {
 	},
 
 	/** Returns the session owner, or null when the token is unknown or expired. */
-	authenticate(token: string): User | null {
+	async authenticate(token: string): Promise<User | null> {
 		const id = hashToken(token);
-		const found = authRepository.findSessionWithUser(id);
+		const found = await authRepository.findSessionWithUser(id);
 		if (!found) return null;
 		if (found.session.expiresAt.getTime() <= Date.now()) {
-			authRepository.deleteSession(id);
+			await authRepository.deleteSession(id);
 			return null;
 		}
 		return toUser(found.user);
 	},
 
-	logout(token: string): void {
-		authRepository.deleteSession(hashToken(token));
+	logout(token: string): Promise<void> {
+		return authRepository.deleteSession(hashToken(token));
 	},
 
-	logoutAll(userId: string): void {
-		authRepository.deleteUserSessions(userId);
+	logoutAll(userId: string): Promise<void> {
+		return authRepository.deleteUserSessions(userId);
 	},
 };

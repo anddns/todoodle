@@ -8,19 +8,19 @@ Aplicação de gerenciamento de tarefas, com uma API REST e um frontend web em R
 
 ### Geral
 
-| Área              | Ferramenta                                                     |
-| ----------------- | -------------------------------------------------------------- |
-| Runtime e pacotes | [Bun](https://bun.com) (workspaces, `bun check`, `bun:sqlite`) |
-| Validação         | [Zod](https://zod.dev), compartilhado entre os pacotes         |
-| Lint e formatação | [Biome](https://biomejs.dev)                                   |
-| Linguagem         | TypeScript em modo estrito                                     |
+| Área              | Ferramenta                                             |
+| ----------------- | ------------------------------------------------------ |
+| Runtime e pacotes | [Bun](https://bun.com) (workspaces, `bun check`)       |
+| Validação         | [Zod](https://zod.dev), compartilhado entre os pacotes |
+| Lint e formatação | [Biome](https://biomejs.dev)                           |
+| Linguagem         | TypeScript em modo estrito                             |
 
 ### API
 
 | Área                 | Ferramenta                                                        |
 | -------------------- | ----------------------------------------------------------------- |
 | Framework HTTP       | [Elysia](https://elysiajs.com)                                    |
-| Banco de dados e ORM | SQLite com [Drizzle ORM](https://orm.drizzle.team)                |
+| Banco de dados e ORM | SQLite (libSQL) com [Drizzle ORM](https://orm.drizzle.team)       |
 | Documentação da API  | OpenAPI com [Scalar](https://scalar.com), via `@elysiajs/openapi` |
 
 ### Frontend
@@ -62,11 +62,12 @@ Todas as variáveis têm valores padrão, então o arquivo `.env` é opcional. P
 cp apps/api/.env.example apps/api/.env
 ```
 
-| Variável       | Padrão        | Descrição                                                                  |
-| -------------- | ------------- | -------------------------------------------------------------------------- |
-| `PORT`         | `3000`        | Porta do servidor                                                          |
-| `DB_FILE_NAME` | `todoodle.db` | Arquivo do banco SQLite                                                    |
-| `NODE_ENV`     | —             | Com `production`, o cookie de sessão recebe o atributo `Secure` (só HTTPS) |
+| Variável              | Padrão             | Descrição                                                                  |
+| --------------------- | ------------------ | -------------------------------------------------------------------------- |
+| `PORT`                | `3000`             | Porta do servidor                                                          |
+| `DATABASE_URL`        | `file:todoodle.db` | Arquivo local em desenvolvimento ou URL do banco no Turso (`libsql://...`) |
+| `DATABASE_AUTH_TOKEN` | —                  | Token de acesso ao Turso (não é usado com arquivo local)                   |
+| `NODE_ENV`            | —                  | Com `production`, o cookie de sessão recebe o atributo `Secure` (só HTTPS) |
 
 O frontend não tem variáveis de ambiente: ele chama a API no mesmo endereço da página.
 
