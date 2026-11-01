@@ -4,16 +4,19 @@
 
 Aplicação de gerenciamento de tarefas, com uma API REST e um frontend web em React, organizada como um monorepo com arquitetura baseada em features. É um projeto de portfólio: o escopo da v1 e o que fica de fora estão em [docs/scope.md](docs/scope.md), e o motivo de cada escolha técnica está em [docs/decisions.md](docs/decisions.md).
 
+**Em produção:** https://todoodle-rust.vercel.app
+
 ## Stack
 
 ### Geral
 
-| Área              | Ferramenta                                             |
-| ----------------- | ------------------------------------------------------ |
-| Runtime e pacotes | [Bun](https://bun.com) (workspaces, `bun check`)       |
-| Validação         | [Zod](https://zod.dev), compartilhado entre os pacotes |
-| Lint e formatação | [Biome](https://biomejs.dev)                           |
-| Linguagem         | TypeScript em modo estrito                             |
+| Área              | Ferramenta                                                                                             |
+| ----------------- | ------------------------------------------------------------------------------------------------------ |
+| Runtime e pacotes | [Bun](https://bun.com) (workspaces, `bun check`)                                                       |
+| Validação         | [Zod](https://zod.dev), compartilhado entre os pacotes                                                 |
+| Lint e formatação | [Biome](https://biomejs.dev)                                                                           |
+| Linguagem         | TypeScript em modo estrito                                                                             |
+| Hospedagem        | [Vercel](https://vercel.com) (frontend na CDN e API como função) e [Turso](https://turso.tech) (banco) |
 
 ### API
 
@@ -62,14 +65,33 @@ Todas as variáveis têm valores padrão, então o arquivo `.env` é opcional. P
 cp apps/api/.env.example apps/api/.env
 ```
 
-| Variável              | Padrão             | Descrição                                                                  |
-| --------------------- | ------------------ | -------------------------------------------------------------------------- |
-| `PORT`                | `3000`             | Porta do servidor                                                          |
-| `DATABASE_URL`        | `file:todoodle.db` | Arquivo local em desenvolvimento ou URL do banco no Turso (`libsql://...`) |
-| `DATABASE_AUTH_TOKEN` | —                  | Token de acesso ao Turso (não é usado com arquivo local)                   |
-| `NODE_ENV`            | —                  | Com `production`, o cookie de sessão recebe o atributo `Secure` (só HTTPS) |
+| Variável              | Padrão             | Descrição                                                                                           |
+| --------------------- | ------------------ | --------------------------------------------------------------------------------------------------- |
+| `PORT`                | `3000`             | Porta do servidor                                                                                   |
+| `DATABASE_URL`        | `file:todoodle.db` | Arquivo local em desenvolvimento ou URL do banco no Turso (`libsql://...`)                          |
+| `DATABASE_AUTH_TOKEN` | —                  | Token de acesso ao Turso (não é usado com arquivo local)                                            |
+| `NODE_ENV`            | —                  | Com `production`, o cookie de sessão recebe o atributo `Secure` (só HTTPS)                          |
+| `VERCEL`              | —                  | Definida pela própria Vercel. Com `1`, o limite de login lê o IP do visitante no header `x-real-ip` |
 
 O frontend não tem variáveis de ambiente: ele chama a API no mesmo endereço da página.
+
+## Deploy
+
+O projeto roda na Vercel, com o banco no Turso. O `vercel.json` já define a instalação, o build (que aplica as migrations antes de gerar o frontend), a pasta publicada e as rotas: `/v1/*`, `/health` e `/openapi` vão para a função da API em `api/index.ts`, e os outros caminhos recebem o frontend. O motivo de cada escolha está na [decisão 22](docs/decisions.md#22-deploy-na-vercel-com-banco-no-turso).
+
+Para publicar uma cópia do projeto:
+
+1. Crie o banco e um token de acesso com a [CLI do Turso](https://docs.turso.tech/cli/introduction):
+
+   ```sh
+   turso db create todoodle
+   turso db show --url todoodle     # valor de DATABASE_URL
+   turso db tokens create todoodle  # valor de DATABASE_AUTH_TOKEN
+   ```
+
+2. Na Vercel, importe o repositório e escolha o preset **Other**. A Vercel sugere o preset "Services", que não funciona com este `vercel.json`.
+3. Antes do primeiro deploy, defina `DATABASE_URL`, `DATABASE_AUTH_TOKEN` e `NODE_ENV=production` só para o ambiente **Production**.
+4. Cada push na `main` gera um novo deploy de produção.
 
 ## Frontend
 
@@ -189,6 +211,8 @@ todoodle/
 │           ├── routes/           # páginas (rotas baseadas em arquivos)
 │           ├── routeTree.gen.ts  # árvore de rotas gerada pelo plugin
 │           └── main.tsx          # monta o app, o router e o QueryClient
+├── api/
+│   └── index.ts                  # função da Vercel, que reexporta o app da API
 ├── packages/
 │   └── shared/                   # schemas Zod e tipos (@todoodle/shared)
 ├── docs/
@@ -196,7 +220,8 @@ todoodle/
 │   └── scope.md
 ├── biome.json
 ├── package.json                  # workspaces e scripts
-└── tsconfig.base.json
+├── tsconfig.base.json
+└── vercel.json                   # build, rotas e runtime do deploy
 ```
 
 ### Arquitetura baseada em features

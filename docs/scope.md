@@ -34,6 +34,10 @@ Um app web em `apps/web`, com a interface em português, que permite:
 
 Fica de fora por enquanto: busca, ordenação escolhida pelo usuário, paginação e o encerramento de todas as sessões pela interface (`logout-all` existe só na API).
 
+## Deploy
+
+O projeto está publicado em https://todoodle-rust.vercel.app: o frontend é servido pela CDN da Vercel, a API roda como uma função da Vercel e o banco fica no Turso. Cada push na `main` gera um deploy de produção, e não há deploys de preview.
+
 ## Entidades
 
 ### Task
@@ -74,4 +78,4 @@ Candidatas para depois: `Project` (agrupar tarefas) e `Tag`.
 1. Autenticação e tarefas por usuário (concluído)
 2. CI com GitHub Actions (concluído)
 3. Frontend em `apps/web` (concluído)
-4. Deploy
+4. Deploy na Vercel com banco no Turso (concluído)

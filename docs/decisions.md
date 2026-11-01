@@ -1,6 +1,6 @@
 # Registro de decisões
 
-Este documento registra as principais decisões técnicas do Todoodle, com o motivo de cada uma e as alternativas consideradas. Todas foram tomadas em 31/10/2026, durante a configuração da v1.
+Este documento registra as principais decisões técnicas do Todoodle, com o motivo de cada uma e as alternativas consideradas. As decisões 1 a 21 foram tomadas em 31/10/2026, durante a configuração da v1. A decisão 22 foi tomada no marco de deploy, concluído em 01/11/2026.
 
 | #   | Decisão                                                                                                  | Área        |
 | --- | -------------------------------------------------------------------------------------------------------- | ----------- |
@@ -25,14 +25,15 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 | 19  | [Cliente tipado com Eden](#19-cliente-tipado-com-eden)                                                   | Frontend    |
 | 20  | [TanStack Router e TanStack Query](#20-tanstack-router-e-tanstack-query)                                 | Frontend    |
 | 21  | [Formulários e componentes](#21-formulários-e-componentes)                                               | Frontend    |
+| 22  | [Deploy na Vercel com banco no Turso](#22-deploy-na-vercel-com-banco-no-turso)                           | Plataforma  |
 
 ## 1. Bun como runtime e gerenciador de pacotes
 
 **Decisão:** usar o Bun para executar a API, instalar pacotes e verificar tipos.
 
-**Motivo:** o Bun reúne runtime, gerenciador de pacotes, workspaces, SQLite nativo (`bun:sqlite`) e verificação de tipos (`bun check`). Isso reduz o número de ferramentas no projeto.
+**Motivo:** o Bun reúne runtime, gerenciador de pacotes, workspaces e verificação de tipos (`bun check`). Isso reduz o número de ferramentas no projeto. Em produção, a API também roda no Bun, no runtime Bun das funções da Vercel (veja a [decisão 22](#22-deploy-na-vercel-com-banco-no-turso)).
 
-**Alternativas:** Node.js com pnpm, que exigiria ferramentas separadas para executar TypeScript e acessar o SQLite.
+**Alternativas:** Node.js com pnpm, que exigiria uma ferramenta separada para executar TypeScript.
 
 ## 2. Monorepo com Bun workspaces
 
@@ -65,9 +66,11 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 ## 5. SQLite com Drizzle ORM
 
-**Decisão:** usar SQLite como banco e o Drizzle ORM para definir a tabela, gerar migrations e fazer consultas, com o driver `bun:sqlite`.
+**Decisão:** usar SQLite como banco e o Drizzle ORM para definir a tabela, gerar migrations e fazer consultas, com o driver libSQL (`@libsql/client`). Em desenvolvimento, o banco é um arquivo local (`file:todoodle.db`). Em produção, é um banco no Turso, que roda libSQL, uma variação do SQLite.
 
 **Motivo:** o SQLite não exige servidor nem configuração, o que facilita rodar o projeto. O Drizzle tem consultas com tipos e migrations em SQL legível. Trocar para PostgreSQL no futuro exige mudar o driver e as definições de tabela, mas não as camadas acima do repositório.
+
+**Troca de driver:** até o marco de deploy, o driver era o `bun:sqlite`, que só abre arquivos locais. Ele foi trocado pelo libSQL, que fala tanto com um arquivo quanto com o Turso, sem mudar as tabelas nem as migrations. Como a API do libSQL é assíncrona (no Turso, cada consulta passa pela rede), as consultas passaram a ser assíncronas em todas as camadas.
 
 **Detalhes:**
 
@@ -81,11 +84,11 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 **Decisão:** o `drizzle-kit` apenas gera as migrations (`db:generate`). Um script próprio (`src/shared/db/migrate.ts`) as aplica (`db:migrate`) com o migrator do Drizzle.
 
-**Motivo:** o `drizzle-kit migrate` precisa de um driver extra (`better-sqlite3` ou `@libsql/client`) e não usa o `bun:sqlite`, mesmo quando executado pelo Bun. O script próprio não adiciona dependências e abre o banco da mesma forma que a API.
+**Motivo:** o script abre o banco com a mesma conexão e as mesmas variáveis da API (`DATABASE_URL` e `DATABASE_AUTH_TOKEN`), então aplica as migrations tanto no arquivo local quanto no Turso. Ele encontra a pasta `drizzle` a partir do próprio arquivo, e por isso funciona em qualquer diretório, inclusive no build da Vercel. No começo, ele existia porque o `drizzle-kit migrate` não usava o `bun:sqlite`. Com a troca para o libSQL, o `drizzle-kit migrate` passaria a funcionar, mas exigiria repetir a configuração do banco no `drizzle.config.ts`.
 
 **Convenção:** as migrations recebem nomes legíveis com `--name` (por exemplo, `0000_create_tasks.sql`), em vez dos nomes aleatórios gerados por padrão.
 
-**Alternativas:** instalar o `@libsql/client` como dependência de desenvolvimento e usar o `drizzle-kit migrate`.
+**Alternativas:** usar o `drizzle-kit migrate`, com o dialeto `turso` e as credenciais do banco no `drizzle.config.ts`.
 
 ## 7. Zod em um pacote compartilhado
 
@@ -182,7 +185,8 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 - O login responde com a mesma mensagem para e-mail desconhecido e senha errada, e verifica um hash fictício quando o e-mail não existe, para que o tempo de resposta também não revele quais e-mails estão cadastrados.
 - Sessões expiradas são apagadas quando o token é usado de novo, e um cookie inválido é removido do navegador na resposta `401`.
 - O cadastro já inicia uma sessão, para o cliente não precisar fazer login em seguida.
-- Depois de 5 tentativas erradas para o mesmo IP e e-mail em 15 minutos, o login responde `429` com o header `Retry-After`, até a janela terminar. Um login certo zera a contagem. A chave combina IP e e-mail para que alguém não consiga bloquear a conta de outra pessoa a partir de outro endereço. A contagem fica em memória, o que basta enquanto a API roda em um único processo. Com várias instâncias, ou atrás de um proxy (que exige ler o IP do `X-Forwarded-For`), ela precisará ser revista.
+- Depois de 5 tentativas erradas para o mesmo IP e e-mail em 15 minutos, o login responde `429` com o header `Retry-After`, até a janela terminar. Um login certo zera a contagem. A chave combina IP e e-mail para que alguém não consiga bloquear a conta de outra pessoa a partir de outro endereço. A contagem fica na tabela `login_attempts`, e não em memória, porque as instâncias de uma função serverless não compartilham memória e podem ser encerradas a qualquer momento. Cada nova falha apaga as linhas já expiradas, e uma única instrução (`INSERT ... ON CONFLICT`) soma a tentativa, para que falhas simultâneas não se sobrescrevam.
+- Na Vercel, o IP vem do header `x-real-ip`, que a Vercel sobrescreve com o IP do visitante. A API só confia nele quando a variável `VERCEL` vale `1`, que a própria Vercel define. Em qualquer outro lugar, o header poderia ser forjado pelo cliente, então a API usa o endereço da conexão.
 - `POST /v1/auth/logout-all` revoga todas as sessões do usuário, para o caso de um token vazado ou de um dispositivo perdido.
 
 **Alternativas:**
@@ -204,7 +208,7 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 **Decisão:** o frontend (`apps/web`) é uma SPA em React, compilada com o Vite.
 
-**Motivo:** o app é um cliente para uma API que já existe, e todo o conteúdo fica atrás do login. Não há páginas públicas que precisem de SEO ou de renderização no servidor. Uma SPA vira só arquivos estáticos, que a própria API pode servir (veja a [decisão 18](#18-frontend-e-api-no-mesmo-endereço)). O Vite é a escolha padrão para React sem framework, e o shadcn/ui e o TanStack Router têm suporte oficial a ele.
+**Motivo:** o app é um cliente para uma API que já existe, e todo o conteúdo fica atrás do login. Não há páginas públicas que precisem de SEO ou de renderização no servidor. Uma SPA vira só arquivos estáticos, que a CDN da Vercel serve sem um servidor (veja as decisões [18](#18-frontend-e-api-no-mesmo-endereço) e [22](#22-deploy-na-vercel-com-banco-no-turso)). O Vite é a escolha padrão para React sem framework, e o shadcn/ui e o TanStack Router têm suporte oficial a ele.
 
 **Alternativas:**
 
@@ -213,7 +217,7 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 
 ## 18. Frontend e API no mesmo endereço
 
-**Decisão:** o navegador acessa o frontend e a API pelo mesmo endereço. Em desenvolvimento, o Vite (`localhost:5173`) repassa as requisições para `/v1` à API (`localhost:3000`). Em produção, a API vai servir o build do frontend, e tudo roda em um único processo Bun. Essa parte fica para o marco de deploy.
+**Decisão:** o navegador acessa o frontend e a API pelo mesmo endereço. Em desenvolvimento, o Vite (`localhost:5173`) repassa as requisições para `/v1` à API (`localhost:3000`). Em produção, a Vercel serve o build do frontend pela CDN e repassa `/v1`, `/health` e `/openapi` para a função da API, no mesmo domínio (veja a [decisão 22](#22-deploy-na-vercel-com-banco-no-turso)). O plano inicial era a API servir o build do frontend em um único processo Bun, mas isso exigiria um servidor sempre ligado.
 
 **Motivo:** a sessão fica em um cookie (veja a [decisão 15](#15-autenticação-com-sessões-próprias)). No mesmo endereço, o navegador envia o cookie sozinho, o `SameSite=Lax` funciona sem exceções e não é preciso configurar CORS. Por isso o frontend não tem variáveis de ambiente: ele chama a API em `window.location.origin`. Também é a forma mais simples de publicar um projeto de portfólio, com um só deploy.
 
@@ -275,3 +279,36 @@ Este documento registra as principais decisões técnicas do Todoodle, com o mot
 - **Componentes gerados:** os arquivos de `components/ui/` ficam fora do lint do Biome, mas são formatados por ele. As alterações feitas neles à mão estão listadas no README, porque rodar o `shadcn add` de novo as desfaz.
 
 **Alternativas:** bibliotecas de componentes prontas, como MUI ou Mantine, que são mais difíceis de adaptar a um visual próprio e entram no projeto como uma dependência inteira.
+
+## 22. Deploy na Vercel com banco no Turso
+
+**Decisão:** publicar o projeto na Vercel, sem container e sem servidor próprio. O frontend é servido pela CDN, e a API roda como uma função da Vercel no runtime Bun (`api/index.ts`). O banco fica no Turso. Só a branch `main` é publicada, em https://todoodle-rust.vercel.app.
+
+**Motivo:** um deploy simples para um projeto de portfólio. Cada push na `main` gera um deploy, sem Dockerfile, volume ou máquina para manter. O Turso mantém o SQLite, então as tabelas e as migrations continuaram as mesmas.
+
+**Como funciona:**
+
+- **`vercel.json`:** instala com `bun install --frozen-lockfile`, aplica as migrations no Turso e gera o build do frontend (`bun run db:migrate && bun run build`), publica `apps/web/dist` e define o runtime Bun das funções.
+- **Rotas:** `/v1/*`, `/health` e `/openapi` vão para a função, que recebe o caminho original. Qualquer outro caminho que não seja um arquivo do build recebe o `index.html`, então recarregar `/login` abre o app.
+- **Função:** o `api/index.ts` só reexporta o app do Elysia, que já tem o `fetch` que a Vercel chama. O `app.listen()` continua no `apps/api/src/index.ts`, usado só no desenvolvimento.
+- **Variáveis:** `DATABASE_URL`, `DATABASE_AUTH_TOKEN` e `NODE_ENV=production` valem só para o ambiente Production da Vercel.
+- **Sem deploys de preview:** como as credenciais do banco existem só em Production, um preview nunca acessa o banco de produção. Na prática, nenhum preview é gerado, porque o desenvolvimento acontece direto na `main`.
+- **Região:** a função roda em `iad1` (Washington, D.C.). O banco no Turso deve ficar na mesma região, porque cada consulta atravessa a rede.
+
+**O que o modelo serverless exigiu:**
+
+- Trocar o `bun:sqlite` pelo libSQL, com consultas assíncronas (veja a [decisão 5](#5-sqlite-com-drizzle-orm)).
+- Guardar as tentativas de login no banco e ler o IP do header da Vercel (veja a [decisão 15](#15-autenticação-com-sessões-próprias)).
+
+**Problemas encontrados no primeiro deploy:**
+
+- **Preset "Services":** ao importar o repositório, a Vercel sugeriu o preset "Services", feito para projetos com mais de um app, que espera uma seção `services` no `vercel.json`, e o botão de deploy ficou desativado. O preset certo é "Other", que é o que o `"framework": null` do `vercel.json` já declara.
+- **Pacote compartilhado não encontrado:** a Vercel compila cada arquivo TypeScript da função para `.js`, mas mantém o `package.json` original. O `@todoodle/shared` declarava `"exports": { ".": "./src/index.ts" }`, um arquivo que não existe na função, e toda requisição à API falhava com `Cannot find package '@todoodle/shared'`. A solução foi trocar o `exports` por `"main": "./src/index"`, sem extensão: o Bun testa as extensões, e encontra o `index.ts` no desenvolvimento e o `index.js` na função. Apontar o `exports` para `./src/index.js` não funciona, porque aí a Vercel não inclui o pacote na função.
+- **Deploy de produção cancelado:** um `ignoreCommand` no `vercel.json` (`[ "$VERCEL_ENV" != "production" ]`), criado para impedir previews, cancelou um deploy de produção, e a causa não ficou clara. Ele foi removido. Para bloquear previews, a opção "Only build production", em **Settings → Build and Deployment → Ignored Build Step**, é a forma oferecida pela própria Vercel.
+
+**Alternativas:**
+
+- **Container com volume persistente** (Fly.io, Railway ou Render): manteria o `bun:sqlite` e o plano inicial de a API servir o frontend, mas exige Dockerfile, volume e backups do arquivo do banco.
+- **Cloudflare Workers com D1:** o runtime não tem as APIs do Bun (`Bun.password`, `Bun.randomUUIDv7()`), e o hash das senhas e a camada do banco precisariam ser reescritos.
+- **PostgreSQL no Neon:** exigiria refazer as tabelas e as migrations para outro banco.
+- **"Services" da Vercel:** recurso feito para publicar frontend e backend no mesmo projeto, mas com mais configuração que uma função na pasta `api/`.
