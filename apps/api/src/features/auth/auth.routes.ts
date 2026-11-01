@@ -60,7 +60,7 @@ export const authRoutes = new Elysia({
 			const ip = server?.requestIP(request)?.address ?? "unknown";
 			const attemptsKey = `${ip}:${body.email}`;
 
-			const retryAfter = loginAttempts.retryAfter(attemptsKey);
+			const retryAfter = await loginAttempts.retryAfter(attemptsKey);
 			if (retryAfter !== null) {
 				set.headers["retry-after"] = String(retryAfter);
 				return status(429, tooManyAttempts);
@@ -68,10 +68,10 @@ export const authRoutes = new Elysia({
 
 			const session = await authService.login(body);
 			if (!session) {
-				loginAttempts.recordFailure(attemptsKey);
+				await loginAttempts.recordFailure(attemptsKey);
 				return status(401, invalidCredentials);
 			}
-			loginAttempts.reset(attemptsKey);
+			await loginAttempts.reset(attemptsKey);
 			setSessionCookie(cookie, session);
 			return session.user;
 		},

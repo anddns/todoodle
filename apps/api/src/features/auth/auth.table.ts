@@ -31,3 +31,11 @@ export const sessions = sqliteTable(
 	},
 	(table) => [index("sessions_user_id_idx").on(table.userId)],
 );
+
+// Failed logins per key (client IP + email). In the database rather than in
+// memory, because serverless instances neither share memory nor live long
+export const loginAttempts = sqliteTable("login_attempts", {
+	key: text().primaryKey(),
+	count: integer().notNull(),
+	resetAt: integer("reset_at", { mode: "timestamp_ms" }).notNull(),
+});

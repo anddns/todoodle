@@ -1,37 +1,43 @@
+import { eq, lte, sql } from "drizzle-orm";
+import { db } from "../../shared/db/client";
+import { loginAttempts as attemptsTable } from "./auth.table";
+
 const MAX_FAILED_ATTEMPTS = 5;
 const WINDOW_MS = 15 * 60 * 1000;
-
-// In memory, which is enough while the API runs as a single process
-const failedAttempts = new Map<string, { count: number; resetAt: number }>();
-
-// Drops expired entries so the map does not grow forever
-setInterval(() => {
-	const now = Date.now();
-	for (const [key, attempts] of failedAttempts) {
-		if (attempts.resetAt <= now) failedAttempts.delete(key);
-	}
-}, WINDOW_MS).unref();
 
 /** Limits failed logins per key (client IP + email) within a time window. */
 export const loginAttempts = {
 	/** Returns the seconds until the key can try again, or null when it is not blocked. */
-	retryAfter(key: string): number | null {
-		const attempts = failedAttempts.get(key);
-		if (!attempts || attempts.resetAt <= Date.now()) return null;
+	async retryAfter(key: string): Promise<number | null> {
+		const attempts = await db
+			.select()
+			.from(attemptsTable)
+			.where(eq(attemptsTable.key, key))
+			.get();
+		if (!attempts || attempts.resetAt.getTime() <= Date.now()) return null;
 		if (attempts.count < MAX_FAILED_ATTEMPTS) return null;
-		return Math.ceil((attempts.resetAt - Date.now()) / 1000);
+		return Math.ceil((attempts.resetAt.getTime() - Date.now()) / 1000);
 	},
 
-	recordFailure(key: string): void {
-		const attempts = failedAttempts.get(key);
-		if (attempts && attempts.resetAt > Date.now()) {
-			attempts.count++;
-		} else {
-			failedAttempts.set(key, { count: 1, resetAt: Date.now() + WINDOW_MS });
-		}
+	async recordFailure(key: string): Promise<void> {
+		const now = new Date();
+		// Drops expired entries so the table does not grow forever
+		await db.delete(attemptsTable).where(lte(attemptsTable.resetAt, now));
+		// A single upsert, so concurrent failures cannot overwrite each other's count
+		await db
+			.insert(attemptsTable)
+			.values({
+				key,
+				count: 1,
+				resetAt: new Date(now.getTime() + WINDOW_MS),
+			})
+			.onConflictDoUpdate({
+				target: attemptsTable.key,
+				set: { count: sql`${attemptsTable.count} + 1` },
+			});
 	},
 
-	reset(key: string): void {
-		failedAttempts.delete(key);
+	async reset(key: string): Promise<void> {
+		await db.delete(attemptsTable).where(eq(attemptsTable.key, key));
 	},
 };

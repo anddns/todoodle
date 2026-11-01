@@ -22,6 +22,13 @@
       "when": 1793483459101,
       "tag": "0002_add_user_to_tasks",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793495596351,
+      "tag": "0003_create_login_attempts",
+      "breakpoints": true
     }
   ]
 }
