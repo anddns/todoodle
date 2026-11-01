@@ -15,6 +15,9 @@ dist/
 *.db-journal
 *.sqlite
 
+# Vercel CLI (vercel link)
+.vercel
+
 # Logs
 *.log
 

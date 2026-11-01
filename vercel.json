@@ -1,0 +1,14 @@
+{
+	"$schema": "https://openapi.vercel.sh/vercel.json",
+	"bunVersion": "1.4.x",
+	"framework": null,
+	"installCommand": "bun install --frozen-lockfile",
+	"buildCommand": "bun run db:migrate && bun run build",
+	"outputDirectory": "apps/web/dist",
+	"rewrites": [
+		{ "source": "/v1/:path*", "destination": "/api" },
+		{ "source": "/health", "destination": "/api" },
+		{ "source": "/openapi/:path*", "destination": "/api" },
+		{ "source": "/:path*", "destination": "/index.html" }
+	]
+}
