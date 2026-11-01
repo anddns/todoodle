@@ -4,4 +4,6 @@ export const config = {
 	databaseUrl: Bun.env.DATABASE_URL ?? "file:todoodle.db",
 	databaseAuthToken: Bun.env.DATABASE_AUTH_TOKEN,
 	isProduction: Bun.env.NODE_ENV === "production",
+	// Set by Vercel on every deployment, at build and at runtime
+	onVercel: Bun.env.VERCEL === "1",
 };

@@ -4,8 +4,10 @@ import {
 	registerSchema,
 	userSchema,
 } from "@todoodle/shared";
+import type { Server } from "bun";
 import { Elysia } from "elysia";
 import { z } from "zod";
+import { config } from "../../shared/config";
 import { errorBody } from "../../shared/errors";
 import {
 	clearSessionCookie,
@@ -27,6 +29,17 @@ const tooManyAttempts = errorBody(
 );
 
 const invalidRequestResponse = apiErrorSchema.describe("Invalid request");
+
+/** The visitor's IP, used to key the failed login limit. */
+function clientIp(
+	request: Request,
+	server: Server<unknown> | null,
+): string | undefined {
+	// Behind Vercel the socket belongs to its proxy. Vercel overwrites x-real-ip with
+	// the visitor's IP, so the header can only be trusted there
+	if (config.onVercel) return request.headers.get("x-real-ip") ?? undefined;
+	return server?.requestIP(request)?.address;
+}
 
 export const authRoutes = new Elysia({
 	prefix: "/auth",
@@ -57,7 +70,7 @@ export const authRoutes = new Elysia({
 	.post(
 		"/login",
 		async ({ body, cookie, request, server, set, status }) => {
-			const ip = server?.requestIP(request)?.address ?? "unknown";
+			const ip = clientIp(request, server) ?? "unknown";
 			const attemptsKey = `${ip}:${body.email}`;
 
 			const retryAfter = await loginAttempts.retryAfter(attemptsKey);
