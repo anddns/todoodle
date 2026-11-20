@@ -18,6 +18,7 @@
     }
   },
   "scripts": {
+    "dev": "bun --filter @todoodle/api dev",
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "typecheck": "bun run --filter '*' typecheck",
