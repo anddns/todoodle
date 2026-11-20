@@ -17,5 +17,5 @@ export const users = snakeCase.table('users', {
 });
 
 export type User = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
+export type NewUser = typeof users.$inferInsert;
 export type UserRole = (typeof userRole.enumValues)[number];
