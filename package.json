@@ -21,7 +21,12 @@
     "check": "biome check .",
     "check:fix": "biome check --write .",
     "typecheck": "bun run --filter '*' typecheck",
-    "verify": "bun run check && bun run typecheck"
+    "verify": "bun run check && bun run typecheck",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:generate": "bun --filter @todoodle/database db:generate",
+    "db:migrate": "bun --filter @todoodle/database db:migrate",
+    "db:studio": "bun --filter @todoodle/database db:studio"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.8",

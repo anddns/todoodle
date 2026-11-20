@@ -6,6 +6,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "db:generate": "bun --bun --env-file=../../.env run drizzle-kit generate",
+    "db:migrate": "bun --bun --env-file=../../.env run drizzle-kit migrate",
+    "db:studio": "bun --bun --env-file=../../.env run drizzle-kit studio",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
